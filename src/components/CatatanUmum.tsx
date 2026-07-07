@@ -4,7 +4,7 @@ import { eyebrow, h1 } from "@/lib/styles";
 import { C } from "@/lib/utils";
 import { Catatan } from "./project/Catatan";
 
-export function CatatanUmum({ data, persist, me }: { data: MarkasData, persist: (d: MarkasData) => void, me: string }) {
+export function CatatanUmum({ data, updateNotes, me }: { data: MarkasData, updateNotes: (notes: any[]) => void, me: string }) {
   return (
     <div>
       <div style={eyebrow}>Di luar proyek</div>
@@ -14,8 +14,8 @@ export function CatatanUmum({ data, persist, me }: { data: MarkasData, persist: 
         SOP tim, ide kampanye, atau info umum lainnya.
       </p>
       <Catatan
-        project={{ notes: data.notes }}
-        update={(patch) => persist({ ...data, ...patch })}
+        project={{ notes: data.notes } as any}
+        update={(patch) => updateNotes(patch.notes)}
         me={me}
         team={data.team}
       />

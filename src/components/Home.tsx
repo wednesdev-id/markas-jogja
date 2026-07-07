@@ -1,27 +1,19 @@
 "use client";
 import { useState } from "react";
-import { MarkasData } from "@/types";
+import { MarkasData, Project } from "@/types";
 import { C, uid, lurikCSS, projectStats } from "@/lib/utils";
 import { eyebrow, h1, btnPrimary, cardStyle, inputStyle, badge } from "@/lib/styles";
 import { ProgressBar } from "./ProgressBar";
 
-export function Home({ data, persist, me, open }: { data: MarkasData, persist: (d: MarkasData) => void, me: string, open: (id: string) => void }) {
+export function Home({ data, createProject, me, open }: { data: MarkasData, createProject: (p: Partial<Project>) => void, me: string, open: (id: string) => void }) {
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState("");
   const [client, setClient] = useState("");
-  const [newMember, setNewMember] = useState("");
 
   const addProject = () => {
     if (!name.trim()) return;
-    const p = { id: uid(), name: name.trim(), client: client.trim(), stripe: data.projects.length % 5, createdAt: Date.now(), lists: [], threads: [], files: [], notes: [], logs: [], targets: {}, ads: { nonAds: false, entries: [] } };
-    persist({ ...data, projects: [p, ...data.projects] });
+    createProject({ name: name.trim(), client: client.trim(), stripe: data.projects.length % 5 });
     setName(""); setClient(""); setShowNew(false);
-  };
-  const addMember = () => {
-    const n = newMember.trim();
-    if (!n || data.team.includes(n)) return;
-    persist({ ...data, team: [...data.team, n] });
-    setNewMember("");
   };
 
   return (
@@ -74,12 +66,11 @@ export function Home({ data, persist, me, open }: { data: MarkasData, persist: (
       </div>
 
       <div style={{ marginTop: 40 }}>
-        <div style={{ ...eyebrow, marginBottom: 10 }}>Anggota tim</div>
+        <div style={{ ...eyebrow, marginBottom: 10 }}>Anggota tim (Semua proyek)</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           {data.team.map((t) => (
             <span key={t} style={{ background: t === me ? C.ink : "#fff", color: t === me ? "#fff" : C.ink, border: `1px solid ${C.line}`, borderRadius: 999, padding: "5px 14px", fontSize: 13, fontWeight: 500 }}>{t}</span>
           ))}
-          <input value={newMember} onChange={(e) => setNewMember(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMember()} placeholder="+ tambah anggota" style={{ ...inputStyle, width: 160, padding: "6px 12px", fontSize: 13 }} />
         </div>
       </div>
     </div>
