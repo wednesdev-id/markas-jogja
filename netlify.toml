@@ -1,0 +1,7 @@
+[build]
+  command = "pnpm run build"
+  publish = ".next"
+
+# Menambahkan plugin cache Next.js standar di Netlify
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

@@ -1,0 +1,92 @@
+"use client";
+import { useState } from "react";
+import { Project } from "@/types";
+import { uid, fmtTime, C } from "@/lib/utils";
+import { btnPrimary, btnGhost, cardStyle, inputStyle, eyebrow } from "@/lib/styles";
+import { Mention } from "../Mention";
+
+export function Diskusi({ project, update, me, view, setView }: { project: Project, update: (p: any) => void, me: string, view: any, setView: (v: any) => void }) {
+  const [showNew, setShowNew] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [comment, setComment] = useState("");
+
+  const thread = view.threadId ? project.threads.find((t) => t.id === view.threadId) : null;
+
+  const addThread = () => {
+    if (!title.trim()) return;
+    const t = { id: uid(), title: title.trim(), body: body.trim(), author: me, createdAt: Date.now(), comments: [] };
+    update({ threads: [t, ...project.threads] });
+    setTitle(""); setBody(""); setShowNew(false);
+    setView({ ...view, threadId: t.id });
+  };
+  const addComment = () => {
+    if (!comment.trim() || !thread) return;
+    update({
+      threads: project.threads.map((t) =>
+        t.id === thread.id ? { ...t, comments: [...t.comments, { id: uid(), author: me, text: comment.trim(), createdAt: Date.now() }] } : t
+      ),
+    });
+    setComment("");
+  };
+  const removeThread = (tid: string) => {
+    update({ threads: project.threads.filter((t) => t.id !== tid) });
+    setView({ ...view, threadId: null });
+  };
+
+  if (thread)
+    return (
+      <div>
+        <a onClick={() => setView({ ...view, threadId: null })} style={{ fontSize: 13, color: C.inkSoft, cursor: "pointer" }}>← Semua diskusi</a>
+        <div style={{ ...cardStyle, padding: 24, marginTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 22, fontWeight: 700, margin: 0, flex: 1 }}>{thread.title}</h2>
+            <button onClick={() => removeThread(thread.id)} style={btnGhost}>hapus</button>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, margin: "6px 0 14px" }}>{thread.author} · {fmtTime(thread.createdAt)}</div>
+          {thread.body && <p style={{ fontSize: 15, lineHeight: 1.65, whiteSpace: "pre-wrap", margin: 0 }}><Mention text={thread.body} /></p>}
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <div style={{ ...eyebrow, marginBottom: 10 }}>{thread.comments.length} komentar</div>
+          {thread.comments.map((c) => (
+            <div key={c.id} style={{ ...cardStyle, padding: "14px 18px", marginBottom: 10 }}>
+              <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 4 }}><b style={{ color: C.ink }}>{c.author}</b> · {fmtTime(c.createdAt)}</div>
+              <div style={{ fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-wrap" }}><Mention text={c.text} /></div>
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Tulis komentar… (@nama untuk memanggil)" rows={2}
+              style={{ ...inputStyle, flex: 1, resize: "vertical", fontFamily: "inherit" }} />
+            <button onClick={addComment} style={{ ...btnPrimary, alignSelf: "flex-end" }}>Kirim</button>
+          </div>
+        </div>
+      </div>
+    );
+
+  return (
+    <div>
+      <div style={{ display: "flex", marginBottom: 18 }}>
+        <button onClick={() => setShowNew(!showNew)} style={btnPrimary}>+ Diskusi baru</button>
+      </div>
+      {showNew && (
+        <div style={{ ...cardStyle, padding: 18, marginBottom: 18, display: "grid", gap: 10 }}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul, mis. Revisi konsep feed minggu ke-2" style={inputStyle} autoFocus />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Tulis isi pengumuman atau bahan diskusi… (@nama untuk memanggil)" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+          <button onClick={addThread} style={{ ...btnPrimary, justifySelf: "start" }}>Terbitkan</button>
+        </div>
+      )}
+      {project.threads.length === 0 && !showNew && (
+        <div style={{ ...cardStyle, padding: 32, textAlign: "center", color: C.inkSoft }}>
+          Belum ada diskusi. Pindahkan obrolan penting dari WhatsApp ke sini supaya terarsip per proyek.
+        </div>
+      )}
+      {project.threads.map((t) => (
+        <div key={t.id} onClick={() => setView({ ...view, threadId: t.id })} style={{ ...cardStyle, padding: "16px 20px", marginBottom: 10, cursor: "pointer" }}>
+          <div style={{ fontWeight: 600, fontSize: 15.5 }}>{t.title}</div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 4 }}>{t.author} · {fmtTime(t.createdAt)} · {t.comments.length} komentar</div>
+        </div>
+      ))}
+    </div>
+  );
+}
