@@ -127,6 +127,55 @@ export default function Markas() {
   };
 
 
+  const [localData, setLocalData] = useState<any>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.projects && parsed.projects.length > 0) {
+          setLocalData(parsed);
+        }
+      } catch (e) {}
+    }
+  }, []);
+
+  const migrateLocalData = async () => {
+    if (!localData || !me) return;
+    setSaving(true);
+    
+    try {
+      // Migrate Projects
+      for (const p of localData.projects) {
+        const { id, name, client, stripe, createdAt, ...restData } = p;
+        await supabase.from('projects').insert({
+          id: id || crypto.randomUUID(),
+          name: name || 'Proyek Tanpa Nama',
+          client: client || '',
+          stripe: stripe || 0,
+          data: restData,
+          owner_id: me.id
+        });
+      }
+      
+      // Migrate Notes
+      if (localData.notes && localData.notes.length > 0) {
+        const { data: profile } = await supabase.from('profiles').select('notes').eq('id', me.id).single();
+        const existingNotes = profile?.notes || [];
+        await supabase.from('profiles').update({ notes: [...existingNotes, ...localData.notes] }).eq('id', me.id);
+      }
+      
+      localStorage.removeItem(KEY);
+      setLocalData(null);
+      alert('Migrasi data selesai! Proyek lama Anda berhasil dipindahkan ke Cloud.');
+    } catch (err: any) {
+      alert('Gagal memigrasi data: ' + err.message);
+    }
+    
+    setSaving(false);
+  };
+
   if (!data)
     return <div style={{ padding: 60, textAlign: "center", color: C.inkSoft }}>Memuat Markas…</div>;
 
@@ -164,6 +213,17 @@ export default function Markas() {
         </div>
         <div style={{ height: 6, background: lurikCSS(project ? project.stripe : 0) }} />
       </header>
+
+      {localData && (
+        <div style={{ background: '#FEF3C7', borderBottom: '1px solid #FDE68A', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+          <span style={{ fontSize: 13, color: '#92400E', fontWeight: 500 }}>
+            Terdapat {localData.projects.length} proyek lama di perangkat ini yang belum tersimpan di Cloud.
+          </span>
+          <button onClick={migrateLocalData} disabled={saving} style={{ ...btnPrimary, background: '#D97706', padding: '6px 12px', fontSize: 12 }}>
+            {saving ? 'Memigrasi...' : 'Migrasikan Sekarang'}
+          </button>
+        </div>
+      )}
 
       <main style={{ maxWidth: 1080, margin: "0 auto", padding: "26px 20px 80px" }}>
         {view.page === "home" && <Home data={data} createProject={createProject} me={me.name} open={(id) => setView({ page: "project", id, tab: "todo" })} />}
