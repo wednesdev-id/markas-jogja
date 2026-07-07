@@ -2,6 +2,9 @@
   command = "pnpm run build"
   publish = ".next"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY"
+
 # Menambahkan plugin cache Next.js standar di Netlify
 [[plugins]]
   package = "@netlify/plugin-nextjs"
