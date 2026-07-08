@@ -1,30 +1,30 @@
 import "./globals.css";
+import { Suspense } from "react";
+import { HeaderWrapper } from "@/components/HeaderWrapper";
+import { Bricolage_Grotesque } from 'next/font/google';
+
+const bricolage = Bricolage_Grotesque({ 
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-bricolage'
+});
 
 export const metadata = {
   title: "Markas - Jogja Marketing",
   description: "Ruang kerja internal Jogja Marketing",
 };
 
-import { createClient } from "@/utils/supabase/server";
-import { Header } from "@/components/Header";
-
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  let me = "User";
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
-    me = profile?.name || user.email?.split('@')[0] || "User";
-  }
-
   return (
-    <html lang="id">
+    <html lang="id" className={bricolage.variable}>
       <body>
-        {user && <Header me={me} />}
+        <Suspense fallback={<div style={{ height: 48, background: "#111" }} />}>
+          <HeaderWrapper />
+        </Suspense>
         {children}
       </body>
     </html>

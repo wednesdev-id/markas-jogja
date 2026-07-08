@@ -8,16 +8,15 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single()
-  const me = profile?.name || user.email?.split('@')[0] || 'User'
+  const [profileRes, pmRes] = await Promise.all([
+    supabase.from('profiles').select('name').eq('id', user.id).single(),
+    supabase.from('project_members').select('project_id').eq('user_id', user.id)
+  ]);
 
-  // Ambil project yang memberOf = user.id
-  const { data: pm } = await supabase
-    .from('project_members')
-    .select('project_id')
-    .eq('user_id', user.id)
+  const profile = profileRes.data;
+  const me = profile?.name || user.email?.split('@')[0] || 'User';
 
-  const memberOf = pm?.map((m) => m.project_id) || []
+  const memberOf = pmRes.data?.map((m) => m.project_id) || [];
 
   let query = supabase.from('projects').select('id, slug, name, client, stripe, created_at, owner_id')
   if (memberOf.length > 0) {

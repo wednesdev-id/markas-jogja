@@ -19,7 +19,7 @@ export function Header({ me, stripe = 0 }: { me: string, stripe?: number }) {
   return (
     <header style={{ background: C.ink, color: "#fff", position: "sticky", top: 0, zIndex: 10 }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "center", minHeight: 48, gap: 24, overflowX: "auto" }}>
-        <b style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 17, letterSpacing: "-0.02em" }}>Markas</b>
+        <b style={{ fontFamily: "var(--font-bricolage), sans-serif", fontSize: 17, letterSpacing: "-0.02em" }}>Markas</b>
         <nav style={{ display: "flex", gap: 6 }}>
           {navs.map((n) => {
             const isActive = pathname === n.href || (n.href !== '/' && pathname?.startsWith(n.href));
