@@ -64,7 +64,11 @@ create policy "Users can view profiles of members in same project" on profiles f
   id = auth.uid() or
   exists (
     select 1 from project_members pm
-    where pm.user_id = profiles.id and public.has_project_access(pm.project_id)
+    where pm.user_id = profiles.id and pm.project_id in (
+      select id from projects where owner_id = auth.uid()
+      union
+      select project_id from project_members where user_id = auth.uid()
+    )
   )
 );
 

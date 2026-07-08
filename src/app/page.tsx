@@ -75,8 +75,12 @@ export default function Markas() {
       const fetchData = async () => {
         const { data: projectsData } = await supabase.from('projects').select('id, name, client, stripe, created_at').order('created_at', { ascending: false });
         const { data: profileData } = await supabase.from('profiles').select('notes').eq('id', authData.user.id).single();
-        // Fetch unique team members
-        const { data: membersData } = await supabase.from('project_members').select('profiles(name)');
+        // Fetch unique team members for the projects we just fetched
+        const projectIds = projectsData?.map(p => p.id) || [];
+        const { data: membersData } = projectIds.length > 0 
+          ? await supabase.from('project_members').select('profiles(name)').in('project_id', projectIds)
+          : { data: [] };
+          
         const teamSet = new Set<string>();
         teamSet.add(userName);
         membersData?.forEach((m: any) => m.profiles?.name && teamSet.add(m.profiles.name));
