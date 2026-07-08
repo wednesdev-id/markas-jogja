@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { Home } from '../components/Home';
 import { MarkasData } from '../types';
 
@@ -13,6 +14,7 @@ describe('Home Component', () => {
           name: 'Project Alpha',
           stripe: 0,
           client: 'Client A',
+          createdAt: Date.now(),
           lists: [],
           threads: [],
           files: [],
@@ -25,10 +27,10 @@ describe('Home Component', () => {
       notes: []
     };
     
-    const persistMock = jest.fn();
+    const createProjectMock = jest.fn();
     const openMock = jest.fn();
 
-    render(<Home data={mockData} persist={persistMock} me="Alice" open={openMock} />);
+    render(<Home data={mockData} createProject={createProjectMock} me="Alice" open={openMock} />);
 
     // Verify existing project is rendered
     expect(screen.getByText('Project Alpha')).toBeInTheDocument();
@@ -44,9 +46,11 @@ describe('Home Component', () => {
     const saveBtn = screen.getByText('Buat');
     fireEvent.click(saveBtn);
     
-    expect(persistMock).toHaveBeenCalledTimes(1);
-    const updatedData = persistMock.mock.calls[0][0];
-    expect(updatedData.projects.length).toBe(2);
-    expect(updatedData.projects[0].name).toBe('Project Beta');
+    expect(createProjectMock).toHaveBeenCalledTimes(1);
+    expect(createProjectMock).toHaveBeenCalledWith({
+      name: 'Project Beta',
+      client: '',
+      stripe: 1 // mockData has 1 project, so length % 5 = 1
+    });
   });
 });

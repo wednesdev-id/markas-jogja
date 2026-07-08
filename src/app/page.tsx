@@ -27,8 +27,20 @@ export default function Markas() {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) return;
       
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
-      const userName = profile?.name || authData.user.email?.split('@')[0] || 'User';
+      const { data: profile, error: profileErr } = await supabase.from('profiles').select('*').eq('id', authData.user.id).single();
+      
+      let userName = profile?.name || authData.user.email?.split('@')[0] || 'User';
+      
+      if (!profile) {
+        // Profile might be missing if user signed up before trigger was added
+        const { error: insertErr } = await supabase.from('profiles').insert({
+          id: authData.user.id,
+          email: authData.user.email,
+          name: userName
+        });
+        if (insertErr) console.error("Auto-create profile failed:", insertErr);
+      }
+
       setMe({ ...authData.user, name: userName });
 
       const fetchData = async () => {
@@ -89,7 +101,7 @@ export default function Markas() {
     const opt: Project = { id: newId, name: p.name!, client: p.client!, stripe: p.stripe!, createdAt: Date.now(), ...projectData };
     setData(prev => prev ? { ...prev, projects: [opt, ...prev.projects] } : null);
     
-    await supabase.from('projects').insert({
+    const { error } = await supabase.from('projects').insert({
       id: newId,
       name: p.name,
       client: p.client,
@@ -97,6 +109,12 @@ export default function Markas() {
       data: projectData,
       owner_id: me.id
     });
+    
+    if (error) {
+      alert("Gagal membuat proyek: " + error.message);
+      // Revert optimistic UI
+      setData(prev => prev ? { ...prev, projects: prev.projects.filter(proj => proj.id !== newId) } : null);
+    }
     setSaving(false);
   };
 
@@ -116,14 +134,19 @@ export default function Markas() {
     if (client !== undefined) updatePayload.client = client;
     if (stripe !== undefined) updatePayload.stripe = stripe;
 
-    await supabase.from('projects').update(updatePayload).eq('id', id);
+    const { error } = await supabase.from('projects').update(updatePayload).eq('id', id);
+    if (error) {
+      alert("Gagal menyimpan perubahan: " + error.message);
+      // Optimistic UI might be out of sync here, best is to refetch
+    }
     setSaving(false);
   };
 
   const updateNotes = async (notes: any[]) => {
     if (!me) return;
     setData(prev => prev ? { ...prev, notes } : null);
-    await supabase.from('profiles').update({ notes }).eq('id', me.id);
+    const { error } = await supabase.from('profiles').update({ notes }).eq('id', me.id);
+    if (error) alert("Gagal menyimpan catatan: " + error.message);
   };
 
 
