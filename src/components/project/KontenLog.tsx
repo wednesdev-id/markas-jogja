@@ -8,9 +8,11 @@ export function KontenLog({ project, update, me }: { project: Project, update: (
   const [date, setDate] = useState(today());
   const [type, setType] = useState("Feed");
   const [judul, setJudul] = useState("");
-  const k = kontenStats(project);
+  const [filterMonth, setFilterMonth] = useState(today().slice(0, 7));
+  const dFormat = new Date(filterMonth + "-01");
+  const bulanIni = dFormat.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  const k = kontenStats(project, filterMonth);
   const targets = project.targets || {};
-  const bulanIni = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
   const setTarget = (t: string, val: string) =>
     update({ targets: { ...targets, [t]: Math.max(0, Number(val) || 0) } });
@@ -27,6 +29,7 @@ export function KontenLog({ project, update, me }: { project: Project, update: (
       <div style={{ ...cardStyle, padding: 18, marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <b style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 16 }}>Target konten per bulan</b>
+          <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} style={{ ...inputStyle, padding: "2px 8px", fontSize: 12.5 }} />
           <span style={{ fontSize: 12.5, color: C.inkSoft }}>berlaku tiap bulan · sedang dihitung: {bulanIni}</span>
           <span style={{ ...badge, background: k.status.bg, color: k.status.fg, marginLeft: "auto" }}>{k.status.label}</span>
         </div>

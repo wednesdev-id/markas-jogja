@@ -1,35 +1,86 @@
 "use client";
 import { useState } from "react";
 import { Project } from "@/types";
-import { uid, today, C } from "@/lib/utils";
+import { today, C } from "@/lib/utils";
 import { btnPrimary, btnGhost, cardStyle, inputStyle } from "@/lib/styles";
 import { fmtDate } from "@/lib/utils";
+import { createClient } from "@/utils/supabase/client";
 
 export function Todos({ project, update, team }: { project: Project, update: (p: any) => void, team: string[] }) {
   const [newList, setNewList] = useState("");
   const [drafts, setDrafts] = useState<Record<string, any>>({});
+  const supabase = createClient();
 
-  const addList = () => {
+  const addList = async () => {
     if (!newList.trim()) return;
-    update({ lists: [...project.lists, { id: uid(), name: newList.trim(), todos: [] }] });
+    const name = newList.trim();
     setNewList("");
+    
+    // Optimistic
+    const tempId = "temp-" + Date.now();
+    update({ lists: [...project.lists, { id: tempId, name, todos: [] }] });
+    
+    // DB
+    const { data } = await supabase.from('lists').insert({ project_id: project.id, name }).select('id').single();
+    if (data) {
+      update({ lists: [...project.lists, { id: data.id, name, todos: [] }] });
+    }
   };
-  const setDraft = (lid: string, patch: any) => setDrafts((d) => ({ ...d, [lid]: { text: "", assignee: "", due: "", ...d[lid], ...patch } }));
-  const addTodo = (lid: string) => {
+
+  const setDraft = (lid: string, patch: any) => setDrafts((d) => ({ ...d, [lid]: { text: "", assignee: "", due: "", priority: "", ...d[lid], ...patch } }));
+  
+  const addTodo = async (lid: string) => {
     const d = drafts[lid];
     if (!d?.text?.trim()) return;
+    const todoData = { 
+      list_id: lid, 
+      text: d.text.trim(), 
+      assignee: d.assignee || null, 
+      due: d.due || null, 
+      priority: d.priority || null,
+      done: false 
+    };
+    setDraft(lid, { text: "" });
+
+    // Optimistic
+    const tempId = "temp-t-" + Date.now();
     update({
       lists: project.lists.map((l) =>
-        l.id === lid ? { ...l, todos: [...l.todos, { id: uid(), text: d.text.trim(), assignee: d.assignee || "", due: d.due || "", done: false }] } : l
+        l.id === lid ? { ...l, todos: [...l.todos, { id: tempId, ...todoData, assignee: todoData.assignee || "", due: todoData.due || "", priority: todoData.priority || "" }] } : l
       ),
     });
-    setDraft(lid, { text: "" });
+
+    // DB
+    const { data } = await supabase.from('todos').insert(todoData).select('id').single();
+    if (data) {
+      update({
+        lists: project.lists.map((l) =>
+          l.id === lid ? { ...l, todos: l.todos.map(t => t.id === tempId ? { ...t, id: data.id } : t) } : l
+        ),
+      });
+    }
   };
-  const toggle = (lid: string, tid: string) =>
-    update({ lists: project.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.map((t) => (t.id === tid ? { ...t, done: !t.done } : t)) } : l)) });
-  const removeTodo = (lid: string, tid: string) =>
+
+  const toggle = async (lid: string, tid: string) => {
+    const current = project.lists.find(l => l.id === lid)?.todos.find(t => t.id === tid);
+    if (!current) return;
+    const newDone = !current.done;
+
+    update({ lists: project.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.map((t) => (t.id === tid ? { ...t, done: newDone } : t)) } : l)) });
+    await supabase.from('todos').update({ done: newDone }).eq('id', tid);
+  };
+
+  const removeTodo = async (lid: string, tid: string) => {
     update({ lists: project.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.filter((t) => t.id !== tid) } : l)) });
-  const removeList = (lid: string) => update({ lists: project.lists.filter((l) => l.id !== lid) });
+    await supabase.from('todos').delete().eq('id', tid);
+  };
+
+  const removeList = async (lid: string) => {
+    update({ lists: project.lists.filter((l) => l.id !== lid) });
+    await supabase.from('lists').delete().eq('id', lid);
+  };
+
+  const prioColors: any = { High: C.bata, Medium: C.kunyit, Low: C.daun };
 
   return (
     <div>
@@ -48,7 +99,7 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
       <div style={{ display: "grid", gap: 16 }}>
         {project.lists.map((l) => {
           const done = l.todos.filter((t) => t.done).length;
-          const d = drafts[l.id] || { text: "", assignee: "", due: "" };
+          const d = drafts[l.id] || { text: "", assignee: "", due: "", priority: "" };
           return (
             <div key={l.id} style={{ ...cardStyle, padding: 0, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", padding: "14px 18px", borderBottom: `1px solid ${C.line}` }}>
@@ -57,12 +108,15 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
                 <button onClick={() => removeList(l.id)} style={{ ...btnGhost, marginLeft: "auto" }}>hapus</button>
               </div>
               <div>
-                {l.todos.map((t) => {
+                {l.todos.map((t: any) => {
                   const late = t.due && !t.done && t.due < today();
                   return (
                     <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: `1px solid ${C.bg}` }}>
                       <input type="checkbox" checked={t.done} onChange={() => toggle(l.id, t.id)} style={{ width: 17, height: 17, accentColor: C.daun, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 14.5, textDecoration: t.done ? "line-through" : "none", color: t.done ? "#9AA3B8" : C.ink }}>{t.text}</span>
+                      <span style={{ flex: 1, fontSize: 14.5, textDecoration: t.done ? "line-through" : "none", color: t.done ? "#9AA3B8" : C.ink }}>
+                        {t.priority && <span style={{ fontSize: 10, fontWeight: 700, color: prioColors[t.priority], border: `1px solid ${prioColors[t.priority]}`, padding: "1px 4px", borderRadius: 4, marginRight: 6 }}>{t.priority}</span>}
+                        {t.text}
+                      </span>
                       {t.assignee && <span style={{ fontSize: 12, background: C.bg, borderRadius: 999, padding: "3px 10px", color: C.inkSoft, whiteSpace: "nowrap" }}>{t.assignee}</span>}
                       {t.due && (
                         <span style={{ fontSize: 12, color: late ? C.bata : C.inkSoft, fontWeight: late ? 700 : 400, whiteSpace: "nowrap" }}>
@@ -74,9 +128,17 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
                   );
                 })}
               </div>
-              <div style={{ display: "flex", gap: 8, padding: "12px 18px", flexWrap: "wrap", background: "#FAFBFC" }}>
+              <div style={{ display: "flex", gap: 8, padding: "12px 18px", flexWrap: "wrap", background: "#FAFBFC", alignItems: "center" }}>
                 <input value={d.text} onChange={(e) => setDraft(l.id, { text: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTodo(l.id)}
                   placeholder="Tambah tugas…" style={{ ...inputStyle, flex: "2 1 180px", fontSize: 13.5 }} />
+                
+                <select value={d.priority} onChange={(e) => setDraft(l.id, { priority: e.target.value })} style={{ ...inputStyle, flex: "0 1 100px", fontSize: 13.5 }}>
+                  <option value="">— prioritas —</option>
+                  <option value="High">Tinggi (High)</option>
+                  <option value="Medium">Sedang (Medium)</option>
+                  <option value="Low">Rendah (Low)</option>
+                </select>
+
                 <select value={d.assignee} onChange={(e) => setDraft(l.id, { assignee: e.target.value })} style={{ ...inputStyle, flex: "0 1 130px", fontSize: 13.5 }}>
                   <option value="">— siapa? —</option>
                   {team.map((m) => <option key={m} value={m}>{m}</option>)}

@@ -46,11 +46,11 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>Email</label>
-              <input name="email" type="email" required placeholder="nama@email.com" style={inputStyle} />
+              <input name="email" type="email" required placeholder="nama@email.com" style={{ ...inputStyle, width: '100%' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>Password</label>
-              <input name="password" type="password" required placeholder="Minimal 6 karakter" minLength={6} style={inputStyle} />
+              <input name="password" type="password" required placeholder="Minimal 6 karakter" minLength={6} style={{ ...inputStyle, width: '100%' }} />
             </div>
             
             <button disabled={loading} style={{ ...btnPrimary, width: "100%", marginTop: 8, opacity: loading ? 0.7 : 1 }}>

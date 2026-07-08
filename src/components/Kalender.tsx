@@ -1,15 +1,13 @@
 "use client";
 import { useState } from "react";
-import { MarkasData } from "@/types";
-import { allTasks, today, fmtDate, lurikAccent, C } from "@/lib/utils";
+import { today, fmtDate, lurikAccent, C } from "@/lib/utils";
 import { eyebrow, h1, btnSmall, cardStyle } from "@/lib/styles";
 
-export function Kalender({ data, open }: { data: MarkasData, open: (id: string) => void }) {
+export function Kalender({ tasks, open }: { tasks: any[], open: (id: string) => void }) {
   const now = new Date();
   const [month, setMonth] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
   const [selDate, setSelDate] = useState<string | null>(null);
 
-  const tasks = allTasks(data).filter((t) => t.due);
   const byDate: Record<string, typeof tasks> = {};
   tasks.forEach((t) => { (byDate[t.due] = byDate[t.due] || []).push(t); });
 
@@ -20,10 +18,8 @@ export function Kalender({ data, open }: { data: MarkasData, open: (id: string) 
   const iso = (d: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const monthName = month.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
-  const monthTasks = tasks
-    .filter((t) => t.due.startsWith(`${y}-${String(m + 1).padStart(2, "0")}`))
-    .sort((a, b) => a.due.localeCompare(b.due));
-  const shown = selDate ? (byDate[selDate] || []) : monthTasks;
+  const prioColors: any = { High: C.bata, Medium: C.kunyit, Low: C.daun };
+  const modalTasks = selDate ? (byDate[selDate] || []) : [];
 
   return (
     <div>
@@ -65,21 +61,28 @@ export function Kalender({ data, open }: { data: MarkasData, open: (id: string) 
         </div>
       </div>
 
-      <div style={{ ...eyebrow, marginBottom: 10 }}>
-        {selDate ? `Deadline ${fmtDate(selDate)}` : `Semua deadline ${monthName}`}
-        {selDate && <a onClick={() => setSelDate(null)} style={{ marginLeft: 10, color: C.kunyit, cursor: "pointer", textTransform: "none", letterSpacing: 0 }}>tampilkan sebulan</a>}
-      </div>
-      {shown.length === 0 && <div style={{ ...cardStyle, padding: 26, textAlign: "center", color: C.inkSoft }}>Tidak ada deadline.</div>}
-      {shown.map((t) => (
-        <div key={t.id} onClick={() => open(t.projectId)} style={{ ...cardStyle, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: lurikAccent(t.stripe), flexShrink: 0 }} />
-          <span style={{ flex: 1, fontSize: 14, textDecoration: t.done ? "line-through" : "none", color: t.done ? "#9AA3B8" : C.ink }}>
-            {t.text} <span style={{ color: "#9AA3B8" }}>— {t.projectName} · {t.listName}</span>
-          </span>
-          {t.assignee && <span style={{ fontSize: 12, background: C.bg, borderRadius: 999, padding: "3px 10px", color: C.inkSoft }}>{t.assignee}</span>}
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: !t.done && t.due < today() ? C.bata : C.inkSoft, whiteSpace: "nowrap" }}>{fmtDate(t.due)}</span>
+      {selDate && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", padding: 20 }}>
+          <div style={{ ...cardStyle, background: "#fff", width: "100%", maxWidth: 500, padding: 24, position: "relative" }}>
+            <button onClick={() => setSelDate(null)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 20, cursor: "pointer" }}>×</button>
+            <h2 style={{ ...h1, fontSize: 20, margin: "0 0 20px" }}>Deadline {fmtDate(selDate)}</h2>
+            
+            {modalTasks.length === 0 && <div style={{ color: C.inkSoft }}>Tidak ada deadline.</div>}
+            <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+              {modalTasks.map((t) => (
+                <div key={t.id} onClick={() => open(t.projectId)} style={{ ...cardStyle, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: "1px solid #E5E7EB" }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: lurikAccent(t.stripe), flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 14, textDecoration: t.done ? "line-through" : "none", color: t.done ? "#9AA3B8" : C.ink }}>
+                    {t.priority && <span style={{ fontSize: 10, fontWeight: 700, color: prioColors[t.priority], border: `1px solid ${prioColors[t.priority]}`, padding: "1px 4px", borderRadius: 4, marginRight: 6 }}>{t.priority}</span>}
+                    {t.text} <div style={{ color: "#9AA3B8", fontSize: 12, marginTop: 2 }}>{t.projectName} · {t.listName}</div>
+                  </span>
+                  {t.assignee && <span style={{ fontSize: 12, background: C.bg, borderRadius: 999, padding: "3px 10px", color: C.inkSoft }}>{t.assignee}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }

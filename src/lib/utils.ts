@@ -66,8 +66,9 @@ export const adsStats = (p: Project) => {
 export const KONTEN_TYPES = ["Feed", "Stories", "Artikel", "Ads"];
 export const monthKey = () => today().slice(0, 7);
 
-export const kontenStats = (p: Project) => {
-  const logs = (p.logs || []).filter((l) => l.date && l.date.startsWith(monthKey()));
+export const kontenStats = (p: Project, customMonthKey?: string) => {
+  const mKey = customMonthKey || monthKey();
+  const logs = (p.logs || []).filter((l) => l.date && l.date.startsWith(mKey));
   const counts: Record<string, number> = {};
   KONTEN_TYPES.forEach((t) => { counts[t] = logs.filter((l) => l.type === t).length; });
   const targets = p.targets || {};
