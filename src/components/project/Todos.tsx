@@ -75,6 +75,19 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
     });
   };
 
+  const changeAssignee = async (lid: string, tid: string, newAssignee: string) => {
+    update((prev: Project) => {
+      const newLists = prev.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.map((t) => {
+        if (t.id === tid) {
+          supabase.from('todos').update({ assignee: newAssignee || null }).eq('id', tid);
+          return { ...t, assignee: newAssignee };
+        }
+        return t;
+      }) } : l));
+      return { lists: newLists };
+    });
+  };
+
   const removeTodo = async (lid: string, tid: string) => {
     update((prev: Project) => ({ lists: prev.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.filter((t) => t.id !== tid) } : l)) }));
     await supabase.from('todos').delete().eq('id', tid);
@@ -122,7 +135,10 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
                         {t.priority && <span style={{ fontSize: 10, fontWeight: 700, color: prioColors[t.priority], border: `1px solid ${prioColors[t.priority]}`, padding: "1px 4px", borderRadius: 4, marginRight: 6 }}>{t.priority}</span>}
                         {t.text}
                       </span>
-                      {t.assignee && <span style={{ fontSize: 12, background: C.bg, borderRadius: 999, padding: "3px 10px", color: C.inkSoft, whiteSpace: "nowrap" }}>{t.assignee}</span>}
+                      <select value={t.assignee || ""} onChange={(e) => changeAssignee(l.id, t.id, e.target.value)} style={{ fontSize: 12, background: C.bg, borderRadius: 999, padding: "2px 8px", color: C.inkSoft, border: "none", outline: "none", cursor: "pointer", maxWidth: 120 }}>
+                        <option value="">— orang —</option>
+                        {team.map((m) => <option key={m} value={m}>{m}</option>)}
+                      </select>
                       {t.due && (
                         <span style={{ fontSize: 12, color: late ? C.bata : C.inkSoft, fontWeight: late ? 700 : 400, whiteSpace: "nowrap" }}>
                           {late ? "⚠ " : ""}{fmtDate(t.due)}

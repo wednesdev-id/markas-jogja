@@ -18,7 +18,7 @@ export default async function HomePage() {
 
   const memberOf = pmRes.data?.map((m) => m.project_id) || [];
 
-  let query = supabase.from('projects').select('id, slug, name, client, stripe, created_at, owner_id')
+  let query = supabase.from('projects').select('id, slug, name, client, stripe, created_at, owner_id, data')
   if (memberOf.length > 0) {
     query = query.or(`owner_id.eq.${user.id},id.in.(${memberOf.join(',')})`)
   } else {
@@ -27,15 +27,18 @@ export default async function HomePage() {
 
   const { data: projects } = await query.order('created_at', { ascending: false })
   
-  const parsedProjects = (projects || []).map(p => ({
-    id: p.id,
-    slug: p.slug,
-    name: p.name,
-    client: p.client || "",
-    stripe: p.stripe || 0,
-    createdAt: new Date(p.created_at).getTime(),
-    lists: [], threads: [], files: [], notes: [], logs: [], targets: {}, ads: { nonAds: false, entries: [] }
-  }));
+  const parsedProjects = (projects || []).map(p => {
+    const d = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || {});
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      client: p.client || "",
+      stripe: p.stripe || 0,
+      createdAt: new Date(p.created_at).getTime(),
+      lists: d.lists || [], threads: d.threads || [], files: d.files || [], notes: d.notes || [], logs: d.logs || [], targets: d.targets || {}, ads: d.ads || { nonAds: false, entries: [] }
+    };
+  });
 
   const { data: allMembers } = await supabase.from('project_members')
     .select('profiles(name)')

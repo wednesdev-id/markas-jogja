@@ -5,7 +5,7 @@ import { uid, fmtTime, C } from "@/lib/utils";
 import { btnPrimary, btnGhost, cardStyle, inputStyle, eyebrow } from "@/lib/styles";
 import { Mention } from "../Mention";
 
-export function Diskusi({ project, update, me, view, setView }: { project: Project, update: (p: any) => void, me: string, view: any, setView: (v: any) => void }) {
+export function Diskusi({ project, update, me, view, setView, team }: { project: Project, update: (p: any) => void, me: string, view: any, setView: (v: any) => void, team: string[] }) {
   const [showNew, setShowNew] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -17,6 +17,21 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
 
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState("");
+
+  const [mentionState, setMentionState] = useState<{ query: string, field: string } | null>(null);
+  const handleTextChange = (val: string, field: string, setter: (v: string) => void) => {
+    setter(val);
+    const match = val.match(/@([a-zA-Z0-9_]*)$/);
+    if (match) {
+      setMentionState({ query: match[1].toLowerCase(), field });
+    } else {
+      if (mentionState?.field === field) setMentionState(null);
+    }
+  };
+  const insertMention = (name: string, val: string, setter: (v: string) => void) => {
+    setter(val.replace(/@[a-zA-Z0-9_]*$/, `@${name} `));
+    setMentionState(null);
+  };
 
   const thread = view.threadId ? project.threads.find((t) => t.id === view.threadId) : null;
 
@@ -31,7 +46,7 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
     if (!comment.trim() || !thread) return;
     update({
       threads: project.threads.map((t) =>
-        t.id === thread.id ? { ...t, comments: [...t.comments, { id: uid(), author: me, text: comment.trim(), createdAt: Date.now() }] } : t
+        t.id === thread.id ? { ...t, comments: [...(t.comments || []), { id: uid(), author: me, text: comment.trim(), createdAt: Date.now() }] } : t
       ),
     });
     setComment("");
@@ -51,7 +66,7 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
     if (!editCommentText.trim() || !thread) return;
     update({
       threads: project.threads.map((t) =>
-        t.id === thread.id ? { ...t, comments: t.comments.map((c: any) => (c.id === cid ? { ...c, text: editCommentText.trim() } : c)) } : t
+        t.id === thread.id ? { ...t, comments: (t.comments || []).map((c: any) => (c.id === cid ? { ...c, text: editCommentText.trim() } : c)) } : t
       ),
     });
     setEditingCommentId(null);
@@ -59,7 +74,7 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
   const removeComment = (cid: string) => {
     if (!thread) return;
     update({
-      threads: project.threads.map((t) => (t.id === thread.id ? { ...t, comments: t.comments.filter((c: any) => c.id !== cid) } : t)),
+      threads: project.threads.map((t) => (t.id === thread.id ? { ...t, comments: (t.comments || []).filter((c: any) => c.id !== cid) } : t)),
     });
   };
 
@@ -71,7 +86,16 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
         {editingThread ? (
           <div style={{ ...cardStyle, padding: 24, marginTop: 12, display: "grid", gap: 10 }}>
             <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Judul diskusi" style={inputStyle} autoFocus />
-            <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={4} placeholder="Isi diskusi…" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+            <div style={{ position: "relative" }}>
+              <textarea value={editBody} onChange={(e) => handleTextChange(e.target.value, 'editBody', setEditBody)} rows={4} placeholder="Isi diskusi…" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} />
+              {mentionState?.field === 'editBody' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
+                <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
+                  {team.filter(t => t.toLowerCase().includes(mentionState.query)).map(t => (
+                    <div key={t} onClick={() => insertMention(t, editBody, setEditBody)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 14 }}>{t}</div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveThread} style={btnPrimary}>Simpan</button>
               <button onClick={() => setEditingThread(false)} style={btnGhost}>Batal</button>
@@ -90,8 +114,8 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
         )}
 
         <div style={{ marginTop: 20 }}>
-          <div style={{ ...eyebrow, marginBottom: 10 }}>{thread.comments.length} komentar</div>
-          {thread.comments.map((c: any) => (
+          <div style={{ ...eyebrow, marginBottom: 10 }}>{(thread.comments || []).length} komentar</div>
+          {(thread.comments || []).map((c: any) => (
             <div key={c.id} style={{ ...cardStyle, padding: "14px 18px", marginBottom: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                 <div style={{ fontSize: 12.5, color: C.inkSoft }}><b style={{ color: C.ink }}>{c.author}</b> · {fmtTime(c.createdAt)}</div>
@@ -104,7 +128,16 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
               </div>
               {editingCommentId === c.id ? (
                 <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
-                  <textarea value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} rows={2} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} autoFocus />
+                  <div style={{ position: "relative" }}>
+                    <textarea value={editCommentText} onChange={(e) => handleTextChange(e.target.value, 'editCommentText', setEditCommentText)} rows={2} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} autoFocus />
+                    {mentionState?.field === 'editCommentText' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
+                      <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
+                        {team.filter(t => t.toLowerCase().includes(mentionState.query)).map(t => (
+                          <div key={t} onClick={() => insertMention(t, editCommentText, setEditCommentText)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 14 }}>{t}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => saveComment(c.id)} style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12 }}>Simpan</button>
                     <button onClick={() => setEditingCommentId(null)} style={{ ...btnGhost, padding: "4px 12px", fontSize: 12 }}>Batal</button>
@@ -116,8 +149,17 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
             </div>
           ))}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Tulis komentar… (@nama untuk memanggil)" rows={2}
-              style={{ ...inputStyle, flex: 1, resize: "vertical", fontFamily: "inherit" }} />
+            <div style={{ flex: 1, position: "relative" }}>
+              <textarea value={comment} onChange={(e) => handleTextChange(e.target.value, 'comment', setComment)} placeholder="Tulis komentar… (@nama untuk memanggil)" rows={2}
+                style={{ ...inputStyle, width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }} />
+              {mentionState?.field === 'comment' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
+                <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
+                  {team.filter(t => t.toLowerCase().includes(mentionState.query)).map(t => (
+                    <div key={t} onClick={() => insertMention(t, comment, setComment)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 14 }}>{t}</div>
+                  ))}
+                </div>
+              )}
+            </div>
             <button onClick={addComment} style={{ ...btnPrimary, alignSelf: "flex-end" }}>Kirim</button>
           </div>
         </div>
@@ -132,7 +174,16 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
       {showNew && (
         <div style={{ ...cardStyle, padding: 18, marginBottom: 18, display: "grid", gap: 10 }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul, mis. Revisi konsep feed minggu ke-2" style={inputStyle} autoFocus />
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} placeholder="Tulis isi pengumuman atau bahan diskusi… (@nama untuk memanggil)" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+          <div style={{ position: "relative" }}>
+            <textarea value={body} onChange={(e) => handleTextChange(e.target.value, 'body', setBody)} rows={4} placeholder="Tulis isi pengumuman atau bahan diskusi… (@nama untuk memanggil)" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} />
+            {mentionState?.field === 'body' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
+              <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
+                {team.filter(t => t.toLowerCase().includes(mentionState.query)).map(t => (
+                  <div key={t} onClick={() => insertMention(t, body, setBody)} style={{ padding: "8px 12px", cursor: "pointer", fontSize: 14 }}>{t}</div>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={addThread} style={{ ...btnPrimary, justifySelf: "start" }}>Terbitkan</button>
         </div>
       )}
@@ -144,7 +195,7 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
       {project.threads.map((t) => (
         <div key={t.id} onClick={() => setView({ ...view, threadId: t.id })} style={{ ...cardStyle, padding: "16px 20px", marginBottom: 10, cursor: "pointer" }}>
           <div style={{ fontWeight: 600, fontSize: 15.5 }}>{t.title}</div>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 4 }}>{t.author} · {fmtTime(t.createdAt)} · {t.comments.length} komentar</div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 4 }}>{t.author} · {fmtTime(t.createdAt)} · {(t.comments || []).length} komentar</div>
         </div>
       ))}
     </div>

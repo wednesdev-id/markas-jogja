@@ -57,7 +57,7 @@ export function ProjectPage({ project, data, updateProject, me, view, setView, i
       {tab === "todo" && <Todos project={project} update={update} team={data.team} />}
       {tab === "konten" && <KontenLog project={project} update={update} me={me} />}
       {tab === "ads" && <AdsTab project={project} update={update} me={me} />}
-      {tab === "diskusi" && <Diskusi project={project} update={update} me={me} view={view} setView={setView} />}
+      {tab === "diskusi" && <Diskusi project={project} update={update} me={me} view={view} setView={setView} team={data.team} />}
       {tab === "catatan" && <Catatan project={project} update={update} me={me} team={data.team} />}
       {tab === "file" && <Files project={project} update={update} me={me} />}
       {tab === "pengaturan" && isOwner && <Pengaturan project={project} update={update} />}
