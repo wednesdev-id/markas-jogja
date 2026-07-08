@@ -32,3 +32,29 @@ export async function createProject(p: any) {
   revalidatePath("/");
   return { id: data.id, slug: data.slug };
 }
+
+export async function signoutAction() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  revalidatePath('/');
+}
+
+export async function updateProfileAction(name: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not logged in" };
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ name })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error("Error updating profile:", error);
+    return { error: error.message };
+  }
+
+  revalidatePath('/profile');
+  revalidatePath('/');
+  return { success: true };
+}
