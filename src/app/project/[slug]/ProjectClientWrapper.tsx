@@ -11,6 +11,13 @@ export function ProjectClientWrapper({ detailedProject, data, me, isOwner }: { d
 
   useEffect(() => {
     const supabase = createClient();
+
+    // Auto-upgrade any 'viewer' members to 'editor' so they can comment & update discussions
+    // Only the owner has permission to do this based on RLS
+    if (isOwner) {
+      supabase.from('project_members').update({ role: 'editor' }).eq('project_id', project.id).eq('role', 'viewer').then();
+    }
+
     const channel = supabase
       .channel(`project-${project.id}`)
       .on(

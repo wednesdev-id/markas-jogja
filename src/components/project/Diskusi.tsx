@@ -87,7 +87,7 @@ export function Diskusi({ project, update, me, view, setView, team }: { project:
           <div style={{ ...cardStyle, padding: 24, marginTop: 12, display: "grid", gap: 10 }}>
             <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Judul diskusi" style={inputStyle} autoFocus />
             <div style={{ position: "relative" }}>
-              <textarea value={editBody} onChange={(e) => handleTextChange(e.target.value, 'editBody', setEditBody)} rows={4} placeholder="Isi diskusi…" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} />
+              <textarea value={editBody} onChange={(e) => handleTextChange(e.target.value, 'editBody', setEditBody)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveThread(); } }} rows={4} placeholder="Isi diskusi…" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} />
               {mentionState?.field === 'editBody' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
                 <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
                   {team.filter(t => t.toLowerCase().includes(mentionState.query)).map(t => (
@@ -129,7 +129,7 @@ export function Diskusi({ project, update, me, view, setView, team }: { project:
               {editingCommentId === c.id ? (
                 <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
                   <div style={{ position: "relative" }}>
-                    <textarea value={editCommentText} onChange={(e) => handleTextChange(e.target.value, 'editCommentText', setEditCommentText)} rows={2} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} autoFocus />
+                    <textarea value={editCommentText} onChange={(e) => handleTextChange(e.target.value, 'editCommentText', setEditCommentText)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveComment(c.id); } }} rows={2} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} autoFocus />
                     {mentionState?.field === 'editCommentText' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
                       <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
                         {team.filter(t => t.toLowerCase().includes(mentionState.query)).map(t => (
@@ -150,7 +150,7 @@ export function Diskusi({ project, update, me, view, setView, team }: { project:
           ))}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
             <div style={{ flex: 1, position: "relative" }}>
-              <textarea value={comment} onChange={(e) => handleTextChange(e.target.value, 'comment', setComment)} placeholder="Tulis komentar… (@nama untuk memanggil)" rows={2}
+              <textarea value={comment} onChange={(e) => handleTextChange(e.target.value, 'comment', setComment)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(); } }} placeholder="Tulis komentar… (@nama untuk memanggil)" rows={2}
                 style={{ ...inputStyle, width: "100%", boxSizing: "border-box", resize: "vertical", fontFamily: "inherit" }} />
               {mentionState?.field === 'comment' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
                 <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
@@ -175,7 +175,7 @@ export function Diskusi({ project, update, me, view, setView, team }: { project:
         <div style={{ ...cardStyle, padding: 18, marginBottom: 18, display: "grid", gap: 10 }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul, mis. Revisi konsep feed minggu ke-2" style={inputStyle} autoFocus />
           <div style={{ position: "relative" }}>
-            <textarea value={body} onChange={(e) => handleTextChange(e.target.value, 'body', setBody)} rows={4} placeholder="Tulis isi pengumuman atau bahan diskusi… (@nama untuk memanggil)" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} />
+            <textarea value={body} onChange={(e) => handleTextChange(e.target.value, 'body', setBody)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addThread(); } }} rows={4} placeholder="Tulis isi pengumuman atau bahan diskusi… (@nama untuk memanggil)" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }} />
             {mentionState?.field === 'body' && team.filter(t => t.toLowerCase().includes(mentionState.query)).length > 0 && (
               <div style={{ position: "absolute", bottom: "100%", left: 0, background: "#fff", border: `1px solid ${C.line}`, borderRadius: 8, padding: 4, marginBottom: 4, zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", maxHeight: 150, overflowY: "auto", minWidth: 200 }}>
                 {team.filter(t => t.toLowerCase().includes(mentionState.query)).map(t => (
