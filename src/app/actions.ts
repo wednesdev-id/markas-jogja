@@ -11,7 +11,7 @@ export async function createProject(p: any) {
   const randomSuffix = Math.random().toString(36).substring(2, 6);
   const slug = `${baseSlug}-${randomSuffix}`;
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("projects")
     .insert({
       name: p.name,
@@ -20,9 +20,7 @@ export async function createProject(p: any) {
       stripe: p.stripe,
       owner_id: user.id,
       data: { lists: [], threads: [], files: [], notes: [], logs: [], targets: {}, ads: { nonAds: false, entries: [] } }
-    })
-    .select("id, slug")
-    .single();
+    });
 
   if (error) {
     console.error("Error creating project:", error);
@@ -30,7 +28,7 @@ export async function createProject(p: any) {
   }
 
   revalidatePath("/");
-  return { id: data.id, slug: data.slug };
+  return { slug: slug };
 }
 
 export async function signoutAction() {

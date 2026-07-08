@@ -102,12 +102,14 @@ export function ProjectClientWrapper({ detailedProject, data, me, isOwner }: { d
   }, [project.id]);
 
   const handleUpdate = async (id: string, patch: Partial<Project> | ((prev: Project) => Partial<Project>)) => {
-    setProject((prev) => {
-      const p = typeof patch === "function" ? patch(prev) : patch;
-      const { lists, ...dbPatch } = p as any; // Strip relational lists before saving to data JSON
-      updateProjectAction(id, dbPatch);
-      return { ...prev, ...p };
-    });
+    const p = typeof patch === "function" ? patch(project) : patch;
+    
+    // Update local React state
+    setProject(prev => ({ ...prev, ...p }));
+    
+    // Fire Server Action outside of setState callback to avoid "Cannot update a component while rendering"
+    const { lists, ...dbPatch } = p as any;
+    updateProjectAction(id, dbPatch);
   };
 
   const handleSetView = (newView: any) => {

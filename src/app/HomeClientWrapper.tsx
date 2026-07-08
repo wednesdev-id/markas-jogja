@@ -8,8 +8,10 @@ export function HomeClientWrapper({ data, me }: { data: MarkasData, me: string }
   const router = useRouter();
 
   const handleCreate = async (p: Partial<Project>) => {
-    const res = await createProject(p);
-    if (res?.slug) {
+    const res = await createProject(p) as any;
+    if (res?.error) {
+      alert("Gagal membuat proyek: " + res.error);
+    } else if (res?.slug) {
       router.push(`/project/${res.slug}`);
     } else if (res?.id) {
       router.push(`/project/${res.id}`);
