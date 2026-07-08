@@ -19,6 +19,35 @@ export default function Markas() {
   const [me, setMe] = useState<any>(null); // Now stores the user object
   const [view, setView] = useState<any>({ page: "home" });
   const [saving, setSaving] = useState(false);
+  const [detailedProject, setDetailedProject] = useState<Project | null>(null);
+
+  useEffect(() => {
+    if (view.page === 'project' && view.id) {
+      setDetailedProject(null);
+      const fetchDetail = async () => {
+         const { data: p } = await supabase.from('projects').select('data').eq('id', view.id).single();
+         if (p) {
+           const d = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || {});
+           const light = data?.projects.find(x => x.id === view.id);
+           if (light) {
+             setDetailedProject({
+               ...light,
+               lists: d.lists || [],
+               threads: d.threads || [],
+               files: d.files || [],
+               notes: d.notes || [],
+               logs: d.logs || [],
+               targets: d.targets || {},
+               ads: d.ads || { nonAds: false, entries: [] }
+             });
+           }
+         }
+      };
+      fetchDetail();
+    } else {
+      setDetailedProject(null);
+    }
+  }, [view.id, view.page, data?.projects]);
 
   useEffect(() => {
     let channel: any;
@@ -44,7 +73,7 @@ export default function Markas() {
       setMe({ ...authData.user, name: userName });
 
       const fetchData = async () => {
-        const { data: projectsData } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+        const { data: projectsData } = await supabase.from('projects').select('id, name, client, stripe, created_at').order('created_at', { ascending: false });
         const { data: profileData } = await supabase.from('profiles').select('notes').eq('id', authData.user.id).single();
         // Fetch unique team members
         const { data: membersData } = await supabase.from('project_members').select('profiles(name)');
@@ -53,20 +82,14 @@ export default function Markas() {
         membersData?.forEach((m: any) => m.profiles?.name && teamSet.add(m.profiles.name));
 
         const parsedProjects = (projectsData || []).map(p => {
-          const d = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || {});
           return {
             id: p.id,
             name: p.name,
             client: p.client || "",
             stripe: p.stripe || 0,
-            lists: d.lists || [],
-            threads: d.threads || [],
-            files: d.files || [],
-            notes: d.notes || [],
-            logs: d.logs || [],
-            targets: d.targets || {},
-            ads: d.ads || { nonAds: false, entries: [] },
-            createdAt: new Date(p.created_at).getTime()
+            createdAt: new Date(p.created_at).getTime(),
+            // Empty defaults for heavy data
+            lists: [], threads: [], files: [], notes: [], logs: [], targets: {}, ads: { nonAds: false, entries: [] }
           } as Project;
         });
 
@@ -120,7 +143,11 @@ export default function Markas() {
 
   const updateProject = async (id: string, patch: Partial<Project>) => {
     setSaving(true);
-    // Optimistic UI
+    // Optimistic UI for detail
+    if (detailedProject && detailedProject.id === id) {
+      setDetailedProject({ ...detailedProject, ...patch });
+    }
+    // Optimistic UI for list
     setData(prev => prev ? { ...prev, projects: prev.projects.map(p => p.id === id ? { ...p, ...patch } : p) } : null);
 
     const { name, client, stripe, createdAt, ...dataPayload } = patch as any;
@@ -205,7 +232,7 @@ export default function Markas() {
   if (!me)
     return <div style={{ padding: 60, textAlign: "center", color: C.inkSoft }}>Memuat Sesi…</div>;
 
-  const project = view.page === "project" ? data.projects.find((p) => p.id === view.id) : null;
+  const lightProject = view.page === "project" ? data.projects.find((p) => p.id === view.id) : null;
   const NAV = [["home", "Proyek"], ["dash", "Dasbor"], ["cal", "Kalender"], ["notes", "Catatan"]];
 
   return (
@@ -234,7 +261,7 @@ export default function Markas() {
             </form>
           </div>
         </div>
-        <div style={{ height: 6, background: lurikCSS(project ? project.stripe : 0) }} />
+        <div style={{ height: 6, background: lurikCSS(lightProject ? lightProject.stripe : 0) }} />
       </header>
 
       {localData && (
@@ -253,8 +280,11 @@ export default function Markas() {
         {view.page === "dash" && <Dashboard data={data} me={me.name} open={(id) => setView({ page: "project", id, tab: "todo" })} />}
         {view.page === "cal" && <Kalender data={data} open={(id) => setView({ page: "project", id, tab: "todo" })} />}
         {view.page === "notes" && <CatatanUmum data={data} updateNotes={updateNotes} me={me.name} />}
-        {project && <ProjectPage project={project} data={data} updateProject={updateProject} me={me.name} view={view} setView={setView} />}
-        {view.page === "project" && !project && (
+        {view.page === "project" && detailedProject && <ProjectPage project={detailedProject} data={data} updateProject={updateProject} me={me.name} view={view} setView={setView} />}
+        {view.page === "project" && !detailedProject && lightProject && (
+          <div style={{ color: C.inkSoft, textAlign: "center", padding: 60 }}>Memuat detail proyek...</div>
+        )}
+        {view.page === "project" && !lightProject && (
           <div style={{ color: C.inkSoft }}>Proyek tidak ditemukan. <a onClick={() => setView({ page: "home" })} style={{ color: C.ink, cursor: "pointer", textDecoration: "underline" }}>Kembali</a></div>
         )}
       </main>

@@ -109,3 +109,8 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Performance Indexes
+create index if not exists idx_projects_owner on projects(owner_id);
+create index if not exists idx_project_members_user on project_members(user_id);
+create index if not exists idx_project_members_project on project_members(project_id);
