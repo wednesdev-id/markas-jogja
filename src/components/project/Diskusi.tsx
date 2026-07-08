@@ -11,6 +11,13 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
   const [body, setBody] = useState("");
   const [comment, setComment] = useState("");
 
+  const [editingThread, setEditingThread] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
+
   const thread = view.threadId ? project.threads.find((t) => t.id === view.threadId) : null;
 
   const addThread = () => {
@@ -34,25 +41,78 @@ export function Diskusi({ project, update, me, view, setView }: { project: Proje
     setView({ ...view, threadId: null });
   };
 
+  const saveThread = () => {
+    if (!editTitle.trim() || !thread) return;
+    update({ threads: project.threads.map((t) => (t.id === thread.id ? { ...t, title: editTitle.trim(), body: editBody.trim() } : t)) });
+    setEditingThread(false);
+  };
+
+  const saveComment = (cid: string) => {
+    if (!editCommentText.trim() || !thread) return;
+    update({
+      threads: project.threads.map((t) =>
+        t.id === thread.id ? { ...t, comments: t.comments.map((c: any) => (c.id === cid ? { ...c, text: editCommentText.trim() } : c)) } : t
+      ),
+    });
+    setEditingCommentId(null);
+  };
+  const removeComment = (cid: string) => {
+    if (!thread) return;
+    update({
+      threads: project.threads.map((t) => (t.id === thread.id ? { ...t, comments: t.comments.filter((c: any) => c.id !== cid) } : t)),
+    });
+  };
+
   if (thread)
     return (
       <div>
         <a onClick={() => setView({ ...view, threadId: null })} style={{ fontSize: 13, color: C.inkSoft, cursor: "pointer" }}>← Semua diskusi</a>
-        <div style={{ ...cardStyle, padding: 24, marginTop: 12 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-            <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 22, fontWeight: 700, margin: 0, flex: 1 }}>{thread.title}</h2>
-            <button onClick={() => removeThread(thread.id)} style={btnGhost}>hapus</button>
+        
+        {editingThread ? (
+          <div style={{ ...cardStyle, padding: 24, marginTop: 12, display: "grid", gap: 10 }}>
+            <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Judul diskusi" style={inputStyle} autoFocus />
+            <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={4} placeholder="Isi diskusi…" style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={saveThread} style={btnPrimary}>Simpan</button>
+              <button onClick={() => setEditingThread(false)} style={btnGhost}>Batal</button>
+            </div>
           </div>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, margin: "6px 0 14px" }}>{thread.author} · {fmtTime(thread.createdAt)}</div>
-          {thread.body && <p style={{ fontSize: 15, lineHeight: 1.65, whiteSpace: "pre-wrap", margin: 0 }}><Mention text={thread.body} /></p>}
-        </div>
+        ) : (
+          <div style={{ ...cardStyle, padding: 24, marginTop: 12 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 22, fontWeight: 700, margin: 0, flex: 1 }}>{thread.title}</h2>
+              {thread.author === me && <button onClick={() => { setEditTitle(thread.title); setEditBody(thread.body || ""); setEditingThread(true); }} style={btnGhost}>edit</button>}
+              <button onClick={() => removeThread(thread.id)} style={btnGhost}>hapus</button>
+            </div>
+            <div style={{ fontSize: 12.5, color: C.inkSoft, margin: "6px 0 14px" }}>{thread.author} · {fmtTime(thread.createdAt)}</div>
+            {thread.body && <p style={{ fontSize: 15, lineHeight: 1.65, whiteSpace: "pre-wrap", margin: 0 }}><Mention text={thread.body} /></p>}
+          </div>
+        )}
 
         <div style={{ marginTop: 20 }}>
           <div style={{ ...eyebrow, marginBottom: 10 }}>{thread.comments.length} komentar</div>
-          {thread.comments.map((c) => (
+          {thread.comments.map((c: any) => (
             <div key={c.id} style={{ ...cardStyle, padding: "14px 18px", marginBottom: 10 }}>
-              <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 4 }}><b style={{ color: C.ink }}>{c.author}</b> · {fmtTime(c.createdAt)}</div>
-              <div style={{ fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-wrap" }}><Mention text={c.text} /></div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <div style={{ fontSize: 12.5, color: C.inkSoft }}><b style={{ color: C.ink }}>{c.author}</b> · {fmtTime(c.createdAt)}</div>
+                {c.author === me && editingCommentId !== c.id && (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button onClick={() => { setEditCommentText(c.text); setEditingCommentId(c.id); }} style={{ ...btnGhost, padding: "2px 6px", fontSize: 11 }}>edit</button>
+                    <button onClick={() => removeComment(c.id)} style={{ ...btnGhost, padding: "2px 6px", fontSize: 11 }}>hapus</button>
+                  </div>
+                )}
+              </div>
+              {editingCommentId === c.id ? (
+                <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
+                  <textarea value={editCommentText} onChange={(e) => setEditCommentText(e.target.value)} rows={2} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} autoFocus />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => saveComment(c.id)} style={{ ...btnPrimary, padding: "4px 12px", fontSize: 12 }}>Simpan</button>
+                    <button onClick={() => setEditingCommentId(null)} style={{ ...btnGhost, padding: "4px 12px", fontSize: 12 }}>Batal</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 14.5, lineHeight: 1.6, whiteSpace: "pre-wrap" }}><Mention text={c.text} /></div>
+              )}
             </div>
           ))}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>

@@ -12,6 +12,32 @@ export function Catatan({ project, update, me, team }: { project: Partial<Projec
   const [attendees, setAttendees] = useState<string[]>([]);
   const [body, setBody] = useState("");
 
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editAttendees, setEditAttendees] = useState<string[]>([]);
+  const [editBody, setEditBody] = useState("");
+
+  const startEditNote = (n: any) => {
+    setEditingNoteId(n.id);
+    setEditTitle(n.title);
+    setEditDate(n.date || today());
+    setEditAttendees(n.attendees || []);
+    setEditBody(n.body || "");
+  };
+
+  const saveEditNote = () => {
+    if (!editingNoteId) return;
+    update({
+      notes: notes.map((n: any) =>
+        n.id === editingNoteId ? { ...n, title: editTitle.trim(), date: editDate, attendees: editAttendees, body: editBody.trim() } : n
+      ),
+    });
+    setEditingNoteId(null);
+  };
+  
+  const toggleEditAtt = (m: string) => setEditAttendees((a) => (a.includes(m) ? a.filter((x) => x !== m) : [...a, m]));
+
   const notes = project.notes || [];
   const toggleAtt = (n: string) => setAttendees((a) => (a.includes(n) ? a.filter((x) => x !== n) : [...a, n]));
 
@@ -21,7 +47,7 @@ export function Catatan({ project, update, me, team }: { project: Partial<Projec
     update({ notes: [note, ...notes] });
     setTitle(""); setBody(""); setAttendees([]); setDate(today()); setShow(false);
   };
-  const removeNote = (nid: string) => update({ notes: notes.filter((n) => n.id !== nid) });
+  const removeNote = (nid: string) => update({ notes: notes.filter((n: any) => n.id !== nid) });
 
   return (
     <div>
@@ -60,30 +86,56 @@ export function Catatan({ project, update, me, team }: { project: Partial<Projec
         </div>
       )}
 
-      {notes.map((n) => (
-        <div key={n.id} style={{ ...cardStyle, padding: "18px 22px", marginBottom: 12 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: 17 }}>{n.title}</div>
-              <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3 }}>
-                {fmtDate(n.date)} · dicatat oleh {n.author}
+      {notes.map((n: any) => (
+        editingNoteId === n.id ? (
+          <div key={n.id} style={{ ...cardStyle, padding: 18, marginBottom: 12, display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Judul" style={{ ...inputStyle, flex: "2 1 220px" }} autoFocus />
+              <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} style={{ ...inputStyle, flex: "0 1 150px" }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 6 }}>Yang hadir:</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {team.map((m) => (
+                  <button key={m} onClick={() => toggleEditAtt(m)}
+                    style={{ borderRadius: 999, padding: "5px 13px", fontSize: 13, fontWeight: 500, border: `1px solid ${editAttendees.includes(m) ? C.ink : C.line}`, background: editAttendees.includes(m) ? C.ink : "#fff", color: editAttendees.includes(m) ? "#fff" : C.ink }}>
+                    {m}
+                  </button>
+                ))}
               </div>
             </div>
-            <button onClick={() => removeNote(n.id)} style={btnGhost}>hapus</button>
+            <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={5} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={saveEditNote} style={btnPrimary}>Simpan</button>
+              <button onClick={() => setEditingNoteId(null)} style={btnGhost}>Batal</button>
+            </div>
           </div>
-          {n.attendees?.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-              {n.attendees.map((a) => (
-                <span key={a} style={{ fontSize: 12, background: C.bg, borderRadius: 999, padding: "3px 11px", color: C.inkSoft }}>{a}</span>
-              ))}
+        ) : (
+          <div key={n.id} style={{ ...cardStyle, padding: "18px 22px", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: 17 }}>{n.title}</div>
+                <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3 }}>
+                  {fmtDate(n.date)} · dicatat oleh {n.author}
+                </div>
+              </div>
+              {n.author === me && <button onClick={() => startEditNote(n)} style={btnGhost}>edit</button>}
+              <button onClick={() => removeNote(n.id)} style={btnGhost}>hapus</button>
             </div>
-          )}
-          {n.body && (
-            <div style={{ fontSize: 14.5, lineHeight: 1.7, whiteSpace: "pre-wrap", marginTop: 12, borderTop: `1px solid ${C.bg}`, paddingTop: 12 }}>
-              <Mention text={n.body} />
-            </div>
-          )}
-        </div>
+            {n.attendees?.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+                {n.attendees.map((a: string) => (
+                  <span key={a} style={{ fontSize: 12, background: C.bg, borderRadius: 999, padding: "3px 11px", color: C.inkSoft }}>{a}</span>
+                ))}
+              </div>
+            )}
+            {n.body && (
+              <div style={{ fontSize: 14.5, lineHeight: 1.7, whiteSpace: "pre-wrap", marginTop: 12, borderTop: `1px solid ${C.bg}`, paddingTop: 12 }}>
+                <Mention text={n.body} />
+              </div>
+            )}
+          </div>
+        )
       ))}
     </div>
   );

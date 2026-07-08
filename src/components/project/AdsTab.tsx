@@ -110,37 +110,48 @@ export function AdsTab({ project, update, me }: { project: Project, update: (p: 
           )}
 
           {st.entries.map((e) => (
-            <div key={e.id} style={{ ...cardStyle, padding: "16px 18px", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11.5, fontWeight: 700, background: C.biruBg, borderRadius: 6, padding: "3px 9px" }}>{e.platform}</span>
-                <b style={{ fontSize: 15, flex: 1, minWidth: 160 }}>{e.name}</b>
-                <select value={e.status} onChange={(ev) => patchEntry(e.id, { status: ev.target.value })}
-                  style={{ ...inputStyle, padding: "5px 9px", fontSize: 13, color: e.status === "Aktif" ? C.daun : C.inkSoft, fontWeight: 600 }}>
-                  {["Aktif", "Paused", "Selesai"].map((s) => <option key={s}>{s}</option>)}
-                </select>
-                <button onClick={() => removeEntry(e.id)} style={btnGhost}>×</button>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 12 }}>
-                <label style={fieldLabel}>Budget (Rp)
-                  <input type="number" min="0" value={e.budget || ""} onChange={(ev) => patchEntry(e.id, { budget: Number(ev.target.value) || 0 })} style={{ ...inputStyle, width: "100%", marginTop: 4 }} />
-                </label>
-                <label style={fieldLabel}>Spend (Rp)
-                  <input type="number" min="0" value={e.spend || ""} onChange={(ev) => patchEntry(e.id, { spend: Number(ev.target.value) || 0 })}
-                    style={{ ...inputStyle, width: "100%", marginTop: 4, color: e.budget && e.spend > e.budget ? C.bata : C.ink, fontWeight: e.budget && e.spend > e.budget ? 700 : 400 }} />
-                </label>
-                <label style={fieldLabel}>Hasil (leads/reach/klik)
-                  <input value={e.result || ""} onChange={(ev) => patchEntry(e.id, { result: ev.target.value })} placeholder="mis. 45 leads" style={{ ...inputStyle, width: "100%", marginTop: 4 }} />
-                </label>
-                <label style={fieldLabel}>Kendala (kosongkan jika aman)
-                  <input value={e.issue || ""} onChange={(ev) => patchEntry(e.id, { issue: ev.target.value })} placeholder="mis. ditolak review"
-                    style={{ ...inputStyle, width: "100%", marginTop: 4, borderColor: e.issue ? C.bata : C.line }} />
-                </label>
-              </div>
-              <div style={{ fontSize: 11.5, color: "#9AA3B8", marginTop: 10 }}>Update terakhir: {fmtTime(e.updatedAt)} oleh {e.by}</div>
-            </div>
+            <CampaignEntryRow key={e.id} e={e} patchEntry={patchEntry} removeEntry={removeEntry} />
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+function CampaignEntryRow({ e, patchEntry, removeEntry }: { e: any, patchEntry: (id: string, patch: any) => void, removeEntry: (id: string) => void }) {
+  const [budget, setBudget] = useState(e.budget);
+  const [spend, setSpend] = useState(e.spend);
+  const [result, setResult] = useState(e.result);
+  const [issue, setIssue] = useState(e.issue);
+
+  return (
+    <div style={{ ...cardStyle, padding: "16px 18px", marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11.5, fontWeight: 700, background: C.biruBg, borderRadius: 6, padding: "3px 9px" }}>{e.platform}</span>
+        <b style={{ fontSize: 15, flex: 1, minWidth: 160 }}>{e.name}</b>
+        <select value={e.status} onChange={(ev) => patchEntry(e.id, { status: ev.target.value })}
+          style={{ ...inputStyle, padding: "5px 9px", fontSize: 13, color: e.status === "Aktif" ? C.daun : C.inkSoft, fontWeight: 600 }}>
+          {["Aktif", "Paused", "Selesai"].map((s) => <option key={s}>{s}</option>)}
+        </select>
+        <button onClick={() => removeEntry(e.id)} style={btnGhost}>×</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 12 }}>
+        <label style={fieldLabel}>Budget (Rp)
+          <input type="number" min="0" value={budget || ""} onChange={(ev) => setBudget(Number(ev.target.value) || 0)} onBlur={() => patchEntry(e.id, { budget })} style={{ ...inputStyle, width: "100%", marginTop: 4 }} />
+        </label>
+        <label style={fieldLabel}>Spend (Rp)
+          <input type="number" min="0" value={spend || ""} onChange={(ev) => setSpend(Number(ev.target.value) || 0)} onBlur={() => patchEntry(e.id, { spend })}
+            style={{ ...inputStyle, width: "100%", marginTop: 4, color: budget && spend > budget ? C.bata : C.ink, fontWeight: budget && spend > budget ? 700 : 400 }} />
+        </label>
+        <label style={fieldLabel}>Hasil (leads/reach/klik)
+          <input value={result || ""} onChange={(ev) => setResult(ev.target.value)} onBlur={() => patchEntry(e.id, { result })} placeholder="mis. 45 leads" style={{ ...inputStyle, width: "100%", marginTop: 4 }} />
+        </label>
+        <label style={fieldLabel}>Kendala (kosongkan jika aman)
+          <input value={issue || ""} onChange={(ev) => setIssue(ev.target.value)} onBlur={() => patchEntry(e.id, { issue })} placeholder="mis. ditolak review"
+            style={{ ...inputStyle, width: "100%", marginTop: 4, borderColor: issue ? C.bata : C.line }} />
+        </label>
+      </div>
+      <div style={{ fontSize: 11.5, color: "#9AA3B8", marginTop: 10 }}>Update terakhir: {fmtTime(e.updatedAt)} oleh {e.by}</div>
     </div>
   );
 }
