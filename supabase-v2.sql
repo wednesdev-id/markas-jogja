@@ -3,6 +3,7 @@ create table profiles (
   id uuid references auth.users on delete cascade primary key,
   email text,
   name text,
+  notes jsonb default '[]'::jsonb,
   created_at timestamp with time zone default now()
 );
 
@@ -43,37 +44,47 @@ alter table projects enable row level security;
 alter table project_members enable row level security;
 alter table invitations enable row level security;
 
+-- Helper function to prevent RLS infinite recursion
+create or replace function public.has_project_access(_project_id uuid)
+returns boolean
+language sql security definer set search_path = public
+as $$
+  select exists (
+    select 1 from projects where id = _project_id and owner_id = auth.uid()
+  ) or exists (
+    select 1 from project_members where project_id = _project_id and user_id = auth.uid()
+  );
+$$;
+
 -- Profiles Policies
 create policy "Users can view their own profile" on profiles for select using (auth.uid() = id);
 create policy "Users can update their own profile" on profiles for update using (auth.uid() = id);
 create policy "Users can insert their own profile" on profiles for insert with check (auth.uid() = id);
 create policy "Users can view profiles of members in same project" on profiles for select using (
+  id = auth.uid() or
   exists (
-    select 1 from project_members pm1
-    join project_members pm2 on pm1.project_id = pm2.project_id
-    where pm1.user_id = profiles.id and pm2.user_id = auth.uid()
+    select 1 from project_members pm
+    where pm.user_id = profiles.id and public.has_project_access(pm.project_id)
   )
 );
 
 -- Projects Policies
 create policy "Users can view projects they own or are members of" on projects for select using (
-  owner_id = auth.uid() or
-  exists (select 1 from project_members where project_id = projects.id and user_id = auth.uid())
+  public.has_project_access(id)
 );
 create policy "Users can insert projects" on projects for insert with check (owner_id = auth.uid());
 create policy "Users can update projects they own or are editors of" on projects for update using (
   owner_id = auth.uid() or
-  exists (select 1 from project_members where project_id = projects.id and user_id = auth.uid() and role in ('editor', 'admin'))
+  exists (select 1 from project_members where project_id = id and user_id = auth.uid() and role in ('editor', 'admin'))
 );
 create policy "Users can delete their own projects" on projects for delete using (owner_id = auth.uid());
 
 -- Project Members Policies
 create policy "Users can view members of their projects" on project_members for select using (
-  exists (select 1 from projects where id = project_members.project_id and owner_id = auth.uid()) or
-  exists (select 1 from project_members pm where pm.project_id = project_members.project_id and pm.user_id = auth.uid())
+  public.has_project_access(project_id)
 );
 create policy "Project owners can manage members" on project_members for all using (
-  exists (select 1 from projects where id = project_members.project_id and owner_id = auth.uid())
+  exists (select 1 from projects where id = project_id and owner_id = auth.uid())
 );
 create policy "Users can join projects via invite" on project_members for insert with check (
   auth.uid() = user_id -- They can only add themselves
