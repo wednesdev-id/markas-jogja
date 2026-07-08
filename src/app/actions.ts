@@ -7,16 +7,21 @@ export async function createProject(p: any) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not logged in" };
 
+  const baseSlug = (p.name || "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  const randomSuffix = Math.random().toString(36).substring(2, 6);
+  const slug = `${baseSlug}-${randomSuffix}`;
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
       name: p.name,
+      slug: slug,
       client: p.client,
       stripe: p.stripe,
       owner_id: user.id,
       data: { lists: [], threads: [], files: [], notes: [], logs: [], targets: {}, ads: { nonAds: false, entries: [] } }
     })
-    .select("id")
+    .select("id, slug")
     .single();
 
   if (error) {
@@ -25,5 +30,5 @@ export async function createProject(p: any) {
   }
 
   revalidatePath("/");
-  return { id: data.id };
+  return { id: data.id, slug: data.slug };
 }

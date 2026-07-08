@@ -39,7 +39,7 @@ export const fmtRp = (n: number | string) => "Rp" + Number(n || 0).toLocaleStrin
 export const allTasks = (data: { projects: Project[] }) =>
   data.projects.flatMap((p) =>
     p.lists.flatMap((l) =>
-      l.todos.map((t) => ({ ...t, projectId: p.id, projectName: p.name, stripe: p.stripe, listName: l.name }))
+      l.todos.map((t) => ({ ...t, projectId: p.id, projectSlug: p.slug, projectName: p.name, stripe: p.stripe, listName: l.name }))
     )
   );
 

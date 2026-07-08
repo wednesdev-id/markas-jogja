@@ -11,6 +11,7 @@ create table profiles (
 create table projects (
   id uuid default gen_random_uuid() primary key,
   name text not null,
+  slug text unique,
   client text default '',
   stripe int default 0,
   data jsonb default '{}'::jsonb,

@@ -9,13 +9,15 @@ export function HomeClientWrapper({ data, me }: { data: MarkasData, me: string }
 
   const handleCreate = async (p: Partial<Project>) => {
     const res = await createProject(p);
-    if (res?.id) {
+    if (res?.slug) {
+      router.push(`/project/${res.slug}`);
+    } else if (res?.id) {
       router.push(`/project/${res.id}`);
     }
   };
 
-  const handleOpen = (id: string) => {
-    router.push(`/project/${id}`);
+  const handleOpen = (slugOrId: string) => {
+    router.push(`/project/${slugOrId}`);
   };
 
   return <Home data={data} createProject={handleCreate} me={me} open={handleOpen} />;

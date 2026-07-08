@@ -19,7 +19,7 @@ export default async function HomePage() {
 
   const memberOf = pm?.map((m) => m.project_id) || []
 
-  let query = supabase.from('projects').select('id, name, client, stripe, created_at, owner_id')
+  let query = supabase.from('projects').select('id, slug, name, client, stripe, created_at, owner_id')
   if (memberOf.length > 0) {
     query = query.or(`owner_id.eq.${user.id},id.in.(${memberOf.join(',')})`)
   } else {
@@ -30,6 +30,7 @@ export default async function HomePage() {
   
   const parsedProjects = (projects || []).map(p => ({
     id: p.id,
+    slug: p.slug,
     name: p.name,
     client: p.client || "",
     stripe: p.stripe || 0,

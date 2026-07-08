@@ -65,7 +65,7 @@ export function Dashboard({ data, me, open }: { data: MarkasData, me: string, op
                 <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: C.inkSoft }}>Belum ada proyek.</td></tr>
               )}
               {rows.map(({ p, s }, i) => (
-                <tr key={p.id} onClick={() => open(p.id)} style={{ cursor: "pointer", background: i % 2 ? "#F8F9FB" : "#fff", borderBottom: `1px solid ${C.bg}` }}>
+                <tr key={p.id} onClick={() => open(p.slug || p.id)} style={{ cursor: "pointer", background: i % 2 ? "#F8F9FB" : "#fff", borderBottom: `1px solid ${C.bg}` }}>
                   <td style={{ padding: "10px 16px", fontWeight: 600 }}>
                     <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: lurikAccent(p.stripe), marginRight: 8 }} />
                     {p.name}
@@ -114,7 +114,7 @@ export function Dashboard({ data, me, open }: { data: MarkasData, me: string, op
               {rows.map(({ p }, i) => {
                 const k = kontenStats(p);
                 return (
-                  <tr key={p.id} onClick={() => open(p.id)} style={{ cursor: "pointer", background: i % 2 ? "#F8F9FB" : "#fff", borderBottom: `1px solid ${C.bg}` }}>
+                  <tr key={p.id} onClick={() => open(p.slug || p.id)} style={{ cursor: "pointer", background: i % 2 ? "#F8F9FB" : "#fff", borderBottom: `1px solid ${C.bg}` }}>
                     <td style={{ padding: "10px 16px", fontWeight: 600 }}>
                       <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: lurikAccent(p.stripe), marginRight: 8 }} />
                       {p.name}
@@ -163,7 +163,7 @@ export function Dashboard({ data, me, open }: { data: MarkasData, me: string, op
               {rows.map(({ p }, i) => {
                 const a = adsStats(p);
                 return (
-                  <tr key={p.id} onClick={() => open(p.id)} style={{ cursor: "pointer", background: i % 2 ? "#F8F9FB" : "#fff", borderBottom: `1px solid ${C.bg}` }}>
+                  <tr key={p.id} onClick={() => open(p.slug || p.id)} style={{ cursor: "pointer", background: i % 2 ? "#F8F9FB" : "#fff", borderBottom: `1px solid ${C.bg}` }}>
                     <td style={{ padding: "10px 16px", fontWeight: 600 }}>
                       <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: lurikAccent(p.stripe), marginRight: 8 }} />
                       {p.name}
@@ -203,7 +203,7 @@ export function Dashboard({ data, me, open }: { data: MarkasData, me: string, op
             ) : (
               <div style={{ marginTop: 10 }}>
                 {o.open.slice(0, 5).map((t) => (
-                  <div key={t.id} onClick={() => open(t.projectId)} style={{ fontSize: 13, padding: "6px 0", borderBottom: `1px solid ${C.bg}`, cursor: "pointer", display: "flex", gap: 8 }}>
+                  <div key={t.id} onClick={() => open(t.projectSlug || t.projectId)} style={{ fontSize: 13, padding: "6px 0", borderBottom: `1px solid ${C.bg}`, cursor: "pointer", display: "flex", gap: 8 }}>
                     <span style={{ width: 8, height: 8, borderRadius: 2, background: lurikAccent(t.stripe), marginTop: 5, flexShrink: 0 }} />
                     <span style={{ flex: 1 }}>{t.text}<span style={{ color: "#9AA3B8" }}> — {t.projectName}</span></span>
                     {t.due && <span style={{ fontSize: 11.5, color: t.due < today() ? C.bata : C.inkSoft, whiteSpace: "nowrap" }}>{fmtDate(t.due)}</span>}
@@ -219,7 +219,7 @@ export function Dashboard({ data, me, open }: { data: MarkasData, me: string, op
             <b style={{ fontSize: 15, color: "#9A6B00" }}>⚠ Belum ada penanggung jawab</b>
             <div style={{ marginTop: 10 }}>
               {tanpaPJ.slice(0, 6).map((t) => (
-                <div key={t.id} onClick={() => open(t.projectId)} style={{ fontSize: 13, padding: "6px 0", borderBottom: `1px solid ${C.bg}`, cursor: "pointer" }}>
+                <div key={t.id} onClick={() => open(t.projectSlug || t.projectId)} style={{ fontSize: 13, padding: "6px 0", borderBottom: `1px solid ${C.bg}`, cursor: "pointer" }}>
                   {t.text} <span style={{ color: "#9AA3B8" }}>— {t.projectName}</span>
                 </div>
               ))}

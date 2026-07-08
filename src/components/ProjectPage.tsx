@@ -9,14 +9,27 @@ import { AdsTab } from "./project/AdsTab";
 import { Diskusi } from "./project/Diskusi";
 import { Catatan } from "./project/Catatan";
 import { Files } from "./project/Files";
+import { Pengaturan } from "./project/Pengaturan";
 import { ShareModal } from "./ShareModal";
 
-export function ProjectPage({ project, data, updateProject, me, view, setView }: { project: Project, data: MarkasData, updateProject: (id: string, patch: Partial<Project>) => void, me: string, view: any, setView: (v: any) => void }) {
+export function ProjectPage({ project, data, updateProject, me, view, setView, isOwner }: { project: Project, data: MarkasData, updateProject: (id: string, patch: Partial<Project>) => void, me: string, view: any, setView: (v: any) => void, isOwner?: boolean }) {
   const [showShare, setShowShare] = useState(false);
   const tab = view.tab || "todo";
   const update = (patch: any) => updateProject(project.id, patch);
 
-  const tabs = [["todo", "To-do"], ["konten", "Log Konten"], ["ads", "Ads"], ["diskusi", "Diskusi"], ["catatan", "Catatan"], ["file", "File"]];
+  const tabs = [
+    ["todo", "To-do"], 
+    ["konten", "Log Konten"], 
+    ["ads", "Ads"], 
+    ["diskusi", "Diskusi"], 
+    ["catatan", "Catatan"], 
+    ["file", "File"]
+  ];
+  
+  if (isOwner) {
+    tabs.push(["pengaturan", "Pengaturan"]);
+  }
+
   const s = projectStats(project);
 
   return (
@@ -47,6 +60,7 @@ export function ProjectPage({ project, data, updateProject, me, view, setView }:
       {tab === "diskusi" && <Diskusi project={project} update={update} me={me} view={view} setView={setView} />}
       {tab === "catatan" && <Catatan project={project} update={update} me={me} team={data.team} />}
       {tab === "file" && <Files project={project} update={update} me={me} />}
+      {tab === "pengaturan" && isOwner && <Pengaturan project={project} update={update} />}
     </div>
   );
 }

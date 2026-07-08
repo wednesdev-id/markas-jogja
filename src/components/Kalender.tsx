@@ -70,7 +70,7 @@ export function Kalender({ tasks, open }: { tasks: any[], open: (id: string) => 
             {modalTasks.length === 0 && <div style={{ color: C.inkSoft }}>Tidak ada deadline.</div>}
             <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
               {modalTasks.map((t) => (
-                <div key={t.id} onClick={() => open(t.projectId)} style={{ ...cardStyle, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: "1px solid #E5E7EB" }}>
+                <div key={t.id} onClick={() => open(t.projectSlug || t.projectId)} style={{ ...cardStyle, padding: "12px 16px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", border: "1px solid #E5E7EB" }}>
                   <span style={{ width: 10, height: 10, borderRadius: 3, background: lurikAccent(t.stripe), flexShrink: 0 }} />
                   <span style={{ flex: 1, fontSize: 14, textDecoration: t.done ? "line-through" : "none", color: t.done ? "#9AA3B8" : C.ink }}>
                     {t.priority && <span style={{ fontSize: 10, fontWeight: 700, color: prioColors[t.priority], border: `1px solid ${prioColors[t.priority]}`, padding: "1px 4px", borderRadius: 4, marginRight: 6 }}>{t.priority}</span>}

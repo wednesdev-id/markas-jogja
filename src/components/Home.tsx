@@ -44,7 +44,7 @@ export function Home({ data, createProject, me, open }: { data: MarkasData, crea
         {data.projects.map((p) => {
           const s = projectStats(p);
           return (
-            <div key={p.id} onClick={() => open(p.id)} style={{ ...cardStyle, cursor: "pointer", overflow: "hidden" }}>
+            <div key={p.id} onClick={() => open(p.slug || p.id)} style={{ ...cardStyle, cursor: "pointer", overflow: "hidden" }}>
               <div style={{ height: 12, background: lurikCSS(p.stripe) }} />
               <div style={{ padding: "16px 18px 18px" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
