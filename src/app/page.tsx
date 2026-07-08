@@ -18,7 +18,7 @@ export default async function HomePage() {
 
   const memberOf = pmRes.data?.map((m) => m.project_id) || [];
 
-  let query = supabase.from('projects').select('id, slug, name, client, stripe, created_at, owner_id, data')
+  let query = supabase.from('projects').select('id, slug, name, client, stripe, created_at, owner_id, data, lists(id, name, todos(id, text, done, due, assignee, priority))')
   if (memberOf.length > 0) {
     query = query.or(`owner_id.eq.${user.id},id.in.(${memberOf.join(',')})`)
   } else {
@@ -29,6 +29,7 @@ export default async function HomePage() {
   
   const parsedProjects = (projects || []).map(p => {
     const d = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || {});
+    const fetchedLists = p.lists || [];
     return {
       id: p.id,
       slug: p.slug,
@@ -36,18 +37,27 @@ export default async function HomePage() {
       client: p.client || "",
       stripe: p.stripe || 0,
       createdAt: new Date(p.created_at).getTime(),
-      lists: d.lists || [], threads: d.threads || [], files: d.files || [], notes: d.notes || [], logs: d.logs || [], targets: d.targets || {}, ads: d.ads || { nonAds: false, entries: [] }
+      owner_id: p.owner_id,
+      lists: fetchedLists, threads: d.threads || [], files: d.files || [], notes: d.notes || [], logs: d.logs || [], targets: d.targets || {}, ads: d.ads || { nonAds: false, entries: [] }
     };
   });
 
-  const { data: allMembers } = await supabase.from('project_members')
-    .select('profiles(name)')
-    .in('project_id', parsedProjects.map(p => p.id))
+  const ownerIds = Array.from(new Set(parsedProjects.map(p => p.owner_id).filter(Boolean)));
+  const [allMembersRes, ownersRes] = await Promise.all([
+    supabase.from('project_members').select('profiles(name)').in('project_id', parsedProjects.map(p => p.id)),
+    ownerIds.length > 0 ? supabase.from('profiles').select('name').in('id', ownerIds) : Promise.resolve({ data: [] })
+  ]);
   
+  const allMembers = allMembersRes.data;
+  const owners = ownersRes.data;
+
   const teamSet = new Set<string>();
   teamSet.add(me);
   allMembers?.forEach((m: any) => {
     if (m.profiles?.name) teamSet.add(m.profiles.name);
+  });
+  owners?.forEach((o: any) => {
+    if (o.name) teamSet.add(o.name);
   });
 
   const markasData = { projects: parsedProjects, team: Array.from(teamSet), notes: [] };

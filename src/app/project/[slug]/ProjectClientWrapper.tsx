@@ -23,6 +23,7 @@ export function ProjectClientWrapper({ detailedProject, data, me, isOwner }: { d
               return {
                 ...prev,
                 ...newData,
+                lists: prev.lists, // Preserve relational lists
                 name: payload.new.name || prev.name,
                 client: payload.new.client || prev.client,
                 stripe: payload.new.stripe !== undefined ? payload.new.stripe : prev.stripe
@@ -31,6 +32,61 @@ export function ProjectClientWrapper({ detailedProject, data, me, isOwner }: { d
           }
         }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lists', filter: `project_id=eq.${project.id}` }, (payload) => {
+        setProject((prev) => {
+          if (payload.eventType === 'INSERT') {
+            if (prev.lists.find(l => l.id === payload.new.id)) return prev;
+            return { ...prev, lists: [...prev.lists, { id: payload.new.id, name: payload.new.name, todos: [] }] };
+          } else if (payload.eventType === 'UPDATE') {
+            const list = prev.lists.find(l => l.id === payload.new.id);
+            if (!list || list.name === payload.new.name) return prev;
+            return { ...prev, lists: prev.lists.map(l => l.id === payload.new.id ? { ...l, name: payload.new.name } : l) };
+          } else if (payload.eventType === 'DELETE') {
+            if (!prev.lists.find(l => l.id === payload.old.id)) return prev;
+            return { ...prev, lists: prev.lists.filter(l => l.id !== payload.old.id) };
+          }
+          return prev;
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, (payload) => {
+        setProject((prev) => {
+          if (payload.eventType === 'INSERT') {
+            const list = prev.lists.find(l => l.id === payload.new.list_id);
+            if (!list || list.todos.find((t: any) => t.id === payload.new.id)) return prev;
+            return {
+              ...prev,
+              lists: prev.lists.map(l => l.id === payload.new.list_id ? { ...l, todos: [...l.todos, payload.new as any] } : l)
+            };
+          } else if (payload.eventType === 'UPDATE') {
+            const list = prev.lists.find(l => l.id === payload.new.list_id);
+            if (!list) return prev;
+            const existing: any = list.todos.find((t: any) => t.id === payload.new.id);
+            if (existing && 
+                existing.text === payload.new.text && 
+                existing.done === payload.new.done && 
+                existing.due === payload.new.due && 
+                existing.assignee === payload.new.assignee && 
+                existing.priority === payload.new.priority) {
+              return prev; // No actual change (prevents re-render & focus loss)
+            }
+            return {
+              ...prev,
+              lists: prev.lists.map(l => l.id === payload.new.list_id ? {
+                ...l,
+                todos: l.todos.map((t: any) => t.id === payload.new.id ? (payload.new as any) : t)
+              } : l)
+            };
+          } else if (payload.eventType === 'DELETE') {
+            const listToUpdate = prev.lists.find(l => l.todos.find((t: any) => t.id === payload.old.id));
+            if (!listToUpdate) return prev;
+            return {
+              ...prev,
+              lists: prev.lists.map(l => l.id === listToUpdate.id ? { ...l, todos: l.todos.filter((t: any) => t.id !== payload.old.id) } : l)
+            };
+          }
+          return prev;
+        });
+      })
       .subscribe();
 
     return () => {
@@ -41,7 +97,8 @@ export function ProjectClientWrapper({ detailedProject, data, me, isOwner }: { d
   const handleUpdate = async (id: string, patch: Partial<Project> | ((prev: Project) => Partial<Project>)) => {
     setProject((prev) => {
       const p = typeof patch === "function" ? patch(prev) : patch;
-      updateProjectAction(id, p);
+      const { lists, ...dbPatch } = p as any; // Strip relational lists before saving to data JSON
+      updateProjectAction(id, dbPatch);
       return { ...prev, ...p };
     });
   };

@@ -33,7 +33,7 @@ export default async function ProjectDetailPage(props: { params: Promise<{ slug:
 
   const pData = typeof project.data === 'string' ? JSON.parse(project.data) : (project.data || {});
 
-  let teamQuery = supabase.from('projects').select('id');
+  let teamQuery = supabase.from('projects').select('id, owner_id');
   if (memberOf.length > 0) {
     teamQuery = teamQuery.or(`owner_id.eq.${user.id},id.in.(${memberOf.join(',')})`);
   } else {
@@ -50,14 +50,17 @@ export default async function ProjectDetailPage(props: { params: Promise<{ slug:
 
   const listsToQuery = dbLists && dbLists.length > 0 ? dbLists.map(l => l.id) : [];
   const teamProjectIds = teamProjects ? teamProjects.map(p => p.id) : [];
+  const teamProjectOwners = teamProjects ? Array.from(new Set(teamProjects.map(p => p.owner_id).filter(Boolean))) : [];
 
-  const [dbTodosRes, allMembersRes] = await Promise.all([
+  const [dbTodosRes, allMembersRes, ownersRes] = await Promise.all([
     listsToQuery.length > 0 ? supabase.from('todos').select('*').in('list_id', listsToQuery).order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
-    teamProjectIds.length > 0 ? supabase.from('project_members').select('profiles(name)').in('project_id', teamProjectIds) : Promise.resolve({ data: [] })
+    teamProjectIds.length > 0 ? supabase.from('project_members').select('profiles(name)').in('project_id', teamProjectIds) : Promise.resolve({ data: [] }),
+    teamProjectOwners.length > 0 ? supabase.from('profiles').select('name').in('id', teamProjectOwners) : Promise.resolve({ data: [] })
   ]);
 
   const dbTodos = dbTodosRes.data || [];
   const allMembers = allMembersRes.data || [];
+  const owners = ownersRes.data || [];
 
   const lists: any[] = [];
   if (dbLists && dbLists.length > 0) {
@@ -102,6 +105,9 @@ export default async function ProjectDetailPage(props: { params: Promise<{ slug:
   teamSet.add(me);
   allMembers.forEach((m: any) => {
     if (m.profiles?.name) teamSet.add(m.profiles.name);
+  });
+  owners.forEach((o: any) => {
+    if (o.name) teamSet.add(o.name);
   });
 
   const markasData = { projects: [], team: Array.from(teamSet), notes: [] };
