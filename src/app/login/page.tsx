@@ -29,8 +29,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FB' }}>
-      <div style={{ maxWidth: 420, width: '100%', background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden" }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FB', padding: 20 }}>
+      <div style={{ maxWidth: 420, width: '100%', background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", margin: "0 auto" }}>
         <div style={{ height: 10, background: lurikCSS(0) }} />
         <div style={{ padding: 32 }}>
           <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: 26, textAlign: 'center', marginBottom: 24 }}>

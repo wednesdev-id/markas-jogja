@@ -18,12 +18,12 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
     
     // Optimistic
     const tempId = "temp-" + Date.now();
-    update({ lists: [...project.lists, { id: tempId, name, todos: [] }] });
+    update((prev: Project) => ({ lists: [...prev.lists, { id: tempId, name, todos: [] }] }));
     
     // DB
     const { data } = await supabase.from('lists').insert({ project_id: project.id, name }).select('id').single();
     if (data) {
-      update({ lists: [...project.lists, { id: data.id, name, todos: [] }] });
+      update((prev: Project) => ({ lists: prev.lists.map(l => l.id === tempId ? { ...l, id: data.id } : l) }));
     }
   };
 
@@ -44,39 +44,44 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
 
     // Optimistic
     const tempId = "temp-t-" + Date.now();
-    update({
-      lists: project.lists.map((l) =>
+    update((prev: Project) => ({
+      lists: prev.lists.map((l) =>
         l.id === lid ? { ...l, todos: [...l.todos, { id: tempId, ...todoData, assignee: todoData.assignee || "", due: todoData.due || "", priority: todoData.priority || "" }] } : l
       ),
-    });
+    }));
 
     // DB
     const { data } = await supabase.from('todos').insert(todoData).select('id').single();
     if (data) {
-      update({
-        lists: project.lists.map((l) =>
+      update((prev: Project) => ({
+        lists: prev.lists.map((l) =>
           l.id === lid ? { ...l, todos: l.todos.map(t => t.id === tempId ? { ...t, id: data.id } : t) } : l
         ),
-      });
+      }));
     }
   };
 
   const toggle = async (lid: string, tid: string) => {
-    const current = project.lists.find(l => l.id === lid)?.todos.find(t => t.id === tid);
-    if (!current) return;
-    const newDone = !current.done;
-
-    update({ lists: project.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.map((t) => (t.id === tid ? { ...t, done: newDone } : t)) } : l)) });
-    await supabase.from('todos').update({ done: newDone }).eq('id', tid);
+    update((prev: Project) => {
+      const newLists = prev.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.map((t) => {
+        if (t.id === tid) {
+          const newDone = !t.done;
+          supabase.from('todos').update({ done: newDone }).eq('id', tid);
+          return { ...t, done: newDone };
+        }
+        return t;
+      }) } : l));
+      return { lists: newLists };
+    });
   };
 
   const removeTodo = async (lid: string, tid: string) => {
-    update({ lists: project.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.filter((t) => t.id !== tid) } : l)) });
+    update((prev: Project) => ({ lists: prev.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.filter((t) => t.id !== tid) } : l)) }));
     await supabase.from('todos').delete().eq('id', tid);
   };
 
   const removeList = async (lid: string) => {
-    update({ lists: project.lists.filter((l) => l.id !== lid) });
+    update((prev: Project) => ({ lists: prev.lists.filter((l) => l.id !== lid) }));
     await supabase.from('lists').delete().eq('id', lid);
   };
 

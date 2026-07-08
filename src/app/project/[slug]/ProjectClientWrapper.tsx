@@ -8,9 +8,12 @@ export function ProjectClientWrapper({ detailedProject, data, me, isOwner }: { d
   const [project, setProject] = useState<Project>(detailedProject);
   const [view, setView] = useState({ page: "project", id: project.id, tab: "todo" });
 
-  const handleUpdate = async (id: string, patch: Partial<Project>) => {
-    setProject({ ...project, ...patch });
-    await updateProjectAction(id, patch);
+  const handleUpdate = async (id: string, patch: Partial<Project> | ((prev: Project) => Partial<Project>)) => {
+    setProject((prev) => {
+      const p = typeof patch === "function" ? patch(prev) : patch;
+      updateProjectAction(id, p);
+      return { ...prev, ...p };
+    });
   };
 
   const handleSetView = (newView: any) => {

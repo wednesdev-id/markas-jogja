@@ -1,5 +1,6 @@
 "use server";
 import { createClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export async function updateProjectAction(id: string, patch: any) {
   const supabase = await createClient();
@@ -30,6 +31,7 @@ export async function updateProjectAction(id: string, patch: any) {
     await supabase.from('projects').update(updatePayload).eq('id', id);
   }
 
+  revalidatePath('/calendar');
   return { success: true };
 }
 

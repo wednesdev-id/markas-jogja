@@ -11,7 +11,7 @@ export default async function CalendarPage() {
   // Because of RLS, we only get ones for projects the user has access to
   const { data: todosData } = await supabase
     .from('todos')
-    .select('*, lists(name, projects(id, name, stripe))')
+    .select('*, lists(name, projects(id, name, stripe, slug))')
     .not('due', 'is', null)
 
   const tasks = (todosData || []).map((t: any) => ({
@@ -23,6 +23,7 @@ export default async function CalendarPage() {
     priority: t.priority || "",
     projectId: t.lists?.projects?.id || "",
     projectName: t.lists?.projects?.name || "",
+    projectSlug: t.lists?.projects?.slug || "",
     stripe: t.lists?.projects?.stripe || 0,
     listName: t.lists?.name || ""
   }))
