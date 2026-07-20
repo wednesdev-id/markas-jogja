@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    restart: always
+    environment:
+      - NODE_ENV=production
+    networks:
+      - default
+
+  jm:
+    image: nginx:alpine
+    container_name: jm
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - default
+      - wednes-proxy-net
+
+networks:
+  default:
+  wednes-proxy-net:
+    external: true
