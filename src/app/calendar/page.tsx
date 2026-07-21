@@ -1,31 +1,59 @@
-import { createClient } from '@/utils/supabase/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { KalenderClientWrapper } from './KalenderClientWrapper'
 
 export default async function CalendarPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth()
+  const user = session?.user
+  if (!user || !user.id) redirect('/login')
 
-  // Fetch lists and todos accessible to this user
-  // Because of RLS, we only get ones for projects the user has access to
-  const { data: todosData } = await supabase
-    .from('todos')
-    .select('*, lists(name, projects(id, name, stripe, slug))')
-    .not('due', 'is', null)
+  const userMemberships = await prisma.projectMember.findMany({
+    where: { userId: user.id },
+    select: { projectId: true }
+  })
+  const memberOf = userMemberships.map((m) => m.projectId) || []
 
-  const tasks = (todosData || []).map((t: any) => ({
+  const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { ownerId: user.id },
+        { id: { in: memberOf } }
+      ]
+    },
+    select: { id: true }
+  })
+  
+  const projectIds = projects.map(p => p.id)
+
+  const todosData = await prisma.todo.findMany({
+    where: {
+      due: { not: null },
+      list: {
+        projectId: { in: projectIds }
+      }
+    },
+    include: {
+      list: {
+        include: {
+          project: { select: { id: true, name: true, stripe: true, slug: true } }
+        }
+      }
+    }
+  })
+
+  const tasks = todosData.map((t) => ({
     id: t.id,
     text: t.text,
     assignee: t.assignee || "",
-    due: t.due || "",
-    done: t.done || false,
+    due: t.due ? new Date(t.due).toISOString() : "",
+    done: !!t.done,
     priority: t.priority || "",
-    projectId: t.lists?.projects?.id || "",
-    projectName: t.lists?.projects?.name || "",
-    projectSlug: t.lists?.projects?.slug || "",
-    stripe: t.lists?.projects?.stripe || 0,
-    listName: t.lists?.name || ""
+    projectId: t.list.project.id,
+    projectName: t.list.project.name,
+    projectSlug: t.list.project.slug || "",
+    stripe: t.list.project.stripe || 0,
+    listName: t.list.name
   }))
 
   return (

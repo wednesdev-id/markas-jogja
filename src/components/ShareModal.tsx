@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
 import { btnPrimary, inputStyle } from '@/lib/styles';
 import { C } from '@/lib/utils';
+import { getProjectMembersAction, createInviteAction } from '@/app/project/[slug]/clientActions';
 
 export function ShareModal({ projectId, onClose }: { projectId: string, onClose: () => void }) {
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
   const [members, setMembers] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('project_members').select('role, profiles(name)').eq('project_id', projectId);
+      const data = await getProjectMembersAction(projectId);
       if (data) setMembers(data);
     })();
   }, [projectId]);
@@ -19,11 +18,7 @@ export function ShareModal({ projectId, onClose }: { projectId: string, onClose:
   const generateLink = async () => {
     setLoading(true);
     const token = crypto.randomUUID();
-    await supabase.from('invitations').insert({
-      project_id: projectId,
-      token,
-      role: 'editor'
-    });
+    await createInviteAction(projectId, 'editor', token);
     setInviteLink(`${window.location.origin}/invite/${token}`);
     setLoading(false);
   };

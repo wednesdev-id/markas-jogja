@@ -1,20 +1,19 @@
-import { createClient } from "@/utils/supabase/server";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Profile } from "@/components/Profile";
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
-  if (!user) {
+  if (!user || !user.id) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id }
+  });
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>

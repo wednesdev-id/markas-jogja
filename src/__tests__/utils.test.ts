@@ -17,6 +17,7 @@ describe("Utils", () => {
       name: "Test",
       stripe: 0,
       client: "",
+      createdAt: Date.now(),
       lists: [
         {
           id: "l1",
@@ -45,7 +46,7 @@ describe("Utils", () => {
   
   it("calculates ads stats correctly", () => {
     const p: Project = {
-      id: "2", name: "Ads", stripe: 0, client: "",
+      id: "2", name: "Ads", stripe: 0, client: "", createdAt: Date.now(),
       lists: [], threads: [], files: [], notes: [], logs: [], targets: {},
       ads: {
         nonAds: false,

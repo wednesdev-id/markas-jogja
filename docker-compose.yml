@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -10,6 +8,29 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - default
+
+  db:
+    image: postgres:15-alpine
+    container_name: db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: markasberjaya
+      POSTGRES_DB: markas_jogja
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d markas_jogja"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - default
 
@@ -31,3 +52,6 @@ networks:
   default:
   wednes-proxy-net:
     external: true
+
+volumes:
+  pgdata:

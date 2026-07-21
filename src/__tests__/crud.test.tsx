@@ -5,6 +5,14 @@ import { Diskusi } from '../components/project/Diskusi';
 import { Files } from '../components/project/Files';
 import { Project } from '../types';
 
+jest.mock('@/app/project/[slug]/clientActions', () => ({
+  addListAction: jest.fn(async () => ({ id: 'db-list-id' })),
+  removeListAction: jest.fn(async () => ({ success: true })),
+  addTodoAction: jest.fn(async () => ({ id: 'db-todo-id' })),
+  updateTodoAction: jest.fn(async () => ({ success: true })),
+  removeTodoAction: jest.fn(async () => ({ success: true })),
+}));
+
 describe('CRUD Fitur Project (Todos, Diskusi, & Assets)', () => {
   const mockProject: Project = {
     id: 'p1',
@@ -31,7 +39,7 @@ describe('CRUD Fitur Project (Todos, Diskusi, & Assets)', () => {
     fireEvent.click(screen.getByText('+ Daftar'));
     
     expect(updateMock).toHaveBeenCalled();
-    const updated = updateMock.mock.calls[0][0];
+    const updated = updateMock.mock.calls[0][0](mockProject);
     expect(updated.lists.length).toBe(2);
     expect(updated.lists[1].name).toBe('Ads');
 
@@ -40,7 +48,7 @@ describe('CRUD Fitur Project (Todos, Diskusi, & Assets)', () => {
     fireEvent.click(deleteBtns[0]); // hapus list 'Feed'
 
     expect(updateMock).toHaveBeenCalledTimes(2);
-    const deletedList = updateMock.mock.calls[1][0];
+    const deletedList = updateMock.mock.calls[1][0](mockProject);
     expect(deletedList.lists.length).toBe(0);
   });
 
@@ -55,7 +63,7 @@ describe('CRUD Fitur Project (Todos, Diskusi, & Assets)', () => {
     fireEvent.click(tambahBtn);
 
     expect(updateMock).toHaveBeenCalledTimes(1);
-    const updated = updateMock.mock.calls[0][0];
+    const updated = updateMock.mock.calls[0][0](mockProject);
     expect(updated.lists[0].todos.length).toBe(1);
     expect(updated.lists[0].todos[0].text).toBe('Bikin desain');
   });
@@ -63,7 +71,7 @@ describe('CRUD Fitur Project (Todos, Diskusi, & Assets)', () => {
   it('bisa membuat diskusi baru (Create Thread)', () => {
     const updateMock = jest.fn();
     const setViewMock = jest.fn();
-    render(<Diskusi project={mockProject} update={updateMock} me="Sari" view={{ tab: 'diskusi' }} setView={setViewMock} />);
+    render(<Diskusi project={mockProject} update={updateMock} me="Sari" view={{ tab: 'diskusi' }} setView={setViewMock} team={['Sari']} />);
 
     fireEvent.click(screen.getByText('+ Diskusi baru'));
     

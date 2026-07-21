@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String?
+  email         String          @unique
+  password      String?         // Hashed password
+  notes         Json?           @default("[]")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  projectsOwned Project[]       @relation("ProjectOwner")
+  memberships   ProjectMember[]
+}
+
+model Project {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  slug        String?         @unique
+  client      String?         @default("")
+  stripe      Int?            @default(0)
+  data        Json?           @default("{}")
+  ownerId     String          @db.Uuid
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  owner       User            @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     ProjectMember[]
+  invitations Invitation[]
+  lists       List[]
+
+  @@index([ownerId])
+}
+
+model ProjectMember {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String   @db.Uuid
+  userId    String   @db.Uuid
+  role      String   @default("viewer") // 'viewer', 'editor', 'admin'
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model Invitation {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String   @db.Uuid
+  token     String   @unique
+  role      String   @default("viewer")
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model List {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  todos   Todo[]
+}
+
+model Todo {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listId    String    @db.Uuid
+  text      String
+  assignee  String?
+  due       DateTime? @db.Date
+  done      Boolean?  @default(false)
+  priority  String?   // 'High', 'Medium', 'Low'
+  createdAt DateTime  @default(now())
+
+  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+}

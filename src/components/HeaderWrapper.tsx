@@ -1,14 +1,18 @@
-import { createClient } from "@/utils/supabase/server";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/Header";
 
 export async function HeaderWrapper() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
   
-  if (!user) return null;
+  if (!user || !user.id) return null;
   
   let me = "User";
-  const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { name: true }
+  });
   me = profile?.name || user.email?.split('@')[0] || "User";
 
   return <Header me={me} />;

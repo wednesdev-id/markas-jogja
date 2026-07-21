@@ -34,13 +34,13 @@ export function ProjectPage({ project, data, updateProject, me, view, setView, i
 
   return (
     <div>
-      {showShare && <ShareModal projectId={project.id} onClose={() => setShowShare(false)} />}
+      {showShare && isOwner && <ShareModal projectId={project.id} onClose={() => setShowShare(false)} />}
       <a onClick={() => setView({ page: "home" })} style={{ fontSize: 13, color: C.inkSoft, cursor: "pointer" }}>← Semua proyek</a>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "8px 0 4px" }}>
         <h1 style={{ ...h1, margin: 0 }}>{project.name}</h1>
         <span style={{ ...badge, background: s.status.bg, color: s.status.fg }}>{s.status.label}</span>
         {project.client && <span style={{ fontSize: 14, color: C.inkSoft }}>Klien: {project.client}</span>}
-        <button onClick={() => setShowShare(true)} style={{ ...btnPrimary, marginLeft: 'auto', background: '#2563EB' }}>Bagikan</button>
+        {isOwner && <button onClick={() => setShowShare(true)} style={{ ...btnPrimary, marginLeft: 'auto', background: '#2563EB' }}>Bagikan</button>}
       </div>
 
       <div style={{ display: "flex", gap: 6, margin: "18px 0 22px", borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>

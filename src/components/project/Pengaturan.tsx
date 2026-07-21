@@ -16,10 +16,11 @@ export function Pengaturan({ project, update }: { project: Project, update: (p: 
   const handleDelete = async () => {
     if (confirm("Apakah Anda yakin ingin menghapus proyek ini? Semua data, tugas, dan file akan hilang dan tidak dapat dikembalikan.")) {
       const res = await deleteProjectAction(project.id);
-      if (res?.success) {
+      if (res && "success" in res && res.success) {
         window.location.href = "/";
       } else {
-        alert("Gagal menghapus proyek: " + res?.error);
+        const message = res && "error" in res ? res.error : "Unknown error";
+        alert("Gagal menghapus proyek: " + message);
       }
     }
   };

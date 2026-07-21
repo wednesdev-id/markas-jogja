@@ -1,60 +1,88 @@
-import { createClient } from '@/utils/supabase/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { Home } from '@/components/Home'
 import { createProject } from './actions'
+import { HomeClientWrapper } from './HomeClientWrapper'
 
 export default async function HomePage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth()
+  const user = session?.user
+  if (!user || !user.id) redirect('/login')
 
-  const [profileRes, pmRes] = await Promise.all([
-    supabase.from('profiles').select('name').eq('id', user.id).single(),
-    supabase.from('project_members').select('project_id').eq('user_id', user.id)
-  ]);
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { name: true }
+  })
 
-  const profile = profileRes.data;
   const me = profile?.name || user.email?.split('@')[0] || 'User';
 
-  const memberOf = pmRes.data?.map((m) => m.project_id) || [];
+  const userMemberships = await prisma.projectMember.findMany({
+    where: { userId: user.id },
+    select: { projectId: true }
+  })
+  
+  const memberOf = userMemberships.map((m) => m.projectId) || [];
 
-  let query = supabase.from('projects').select('id, slug, name, client, stripe, created_at, owner_id, data, lists(id, name, todos(id, text, done, due, assignee, priority))')
-  if (memberOf.length > 0) {
-    query = query.or(`owner_id.eq.${user.id},id.in.(${memberOf.join(',')})`)
-  } else {
-    query = query.eq('owner_id', user.id)
-  }
-
-  const { data: projects } = await query.order('created_at', { ascending: false })
+  const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { ownerId: user.id },
+        { id: { in: memberOf } }
+      ]
+    },
+    include: {
+      lists: {
+        include: {
+          todos: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
   
   const parsedProjects = (projects || []).map(p => {
-    const d = typeof p.data === 'string' ? JSON.parse(p.data) : (p.data || {});
+    const d = typeof p.data === 'string' ? JSON.parse(p.data as string) : (p.data || {});
     const fetchedLists = p.lists || [];
     return {
       id: p.id,
-      slug: p.slug,
+      slug: p.slug || undefined,
       name: p.name,
       client: p.client || "",
       stripe: p.stripe || 0,
-      createdAt: new Date(p.created_at).getTime(),
-      owner_id: p.owner_id,
-      lists: fetchedLists, threads: d.threads || [], files: d.files || [], notes: d.notes || [], logs: d.logs || [], targets: d.targets || {}, ads: d.ads || { nonAds: false, entries: [] }
+      createdAt: new Date(p.createdAt).getTime(),
+      owner_id: p.ownerId,
+      lists: fetchedLists.map((l: any) => ({
+        ...l,
+        todos: l.todos.map((t: any) => ({
+          ...t,
+          assignee: t.assignee || "",
+          due: t.due ? new Date(t.due).toISOString() : "",
+          done: !!t.done,
+          priority: t.priority || ""
+        }))
+      })), threads: d.threads || [], files: d.files || [], notes: d.notes || [], logs: d.logs || [], targets: d.targets || {}, ads: d.ads || { nonAds: false, entries: [] }
     };
   });
 
+  const projectIds = parsedProjects.map(p => p.id);
   const ownerIds = Array.from(new Set(parsedProjects.map(p => p.owner_id).filter(Boolean)));
-  const [allMembersRes, ownersRes] = await Promise.all([
-    supabase.from('project_members').select('profiles(name)').in('project_id', parsedProjects.map(p => p.id)),
-    ownerIds.length > 0 ? supabase.from('profiles').select('name').in('id', ownerIds) : Promise.resolve({ data: [] })
-  ]);
   
-  const allMembers = allMembersRes.data;
-  const owners = ownersRes.data;
+  const [allMembers, owners] = await Promise.all([
+    prisma.projectMember.findMany({
+      where: { projectId: { in: projectIds } },
+      include: { user: { select: { name: true } } }
+    }),
+    prisma.user.findMany({
+      where: { id: { in: ownerIds } },
+      select: { name: true }
+    })
+  ]);
 
   const teamSet = new Set<string>();
   teamSet.add(me);
   allMembers?.forEach((m: any) => {
-    if (m.profiles?.name) teamSet.add(m.profiles.name);
+    if (m.user?.name) teamSet.add(m.user.name);
   });
   owners?.forEach((o: any) => {
     if (o.name) teamSet.add(o.name);
@@ -62,15 +90,9 @@ export default async function HomePage() {
 
   const markasData = { projects: parsedProjects, team: Array.from(teamSet), notes: [] };
 
-  // Home uses "open" to navigate to project view
-  // In the SPA it was `open(id) => setView(...)`
-  // Now we need it to just navigate to `/project/[id]`
   return (
     <main style={{ maxWidth: 1080, margin: "0 auto", padding: "26px 20px 80px" }}>
       <HomeClientWrapper data={markasData} me={me} />
     </main>
   );
 }
-
-// Inline Client Component for wrappers
-import { HomeClientWrapper } from './HomeClientWrapper'

@@ -1,13 +1,18 @@
 "use server";
-import { createClient } from "@/utils/supabase/server";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function updateNotesAction(notes: any[]) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
   if (!user) return { error: "Not logged in" };
 
-  const { error } = await supabase.from('profiles').update({ notes }).eq('id', user.id);
-  if (error) {
+  try {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { notes }
+    });
+  } catch (error: any) {
     console.error("Error updating notes:", error);
     return { error: error.message };
   }

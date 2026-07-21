@@ -4,12 +4,11 @@ import { Project } from "@/types";
 import { today, C } from "@/lib/utils";
 import { btnPrimary, btnGhost, cardStyle, inputStyle } from "@/lib/styles";
 import { fmtDate } from "@/lib/utils";
-import { createClient } from "@/utils/supabase/client";
+import { addListAction, removeListAction, addTodoAction, updateTodoAction, removeTodoAction } from "@/app/project/[slug]/clientActions";
 
 export function Todos({ project, update, team }: { project: Project, update: (p: any) => void, team: string[] }) {
   const [newList, setNewList] = useState("");
   const [drafts, setDrafts] = useState<Record<string, any>>({});
-  const supabase = createClient();
 
   const addList = async () => {
     if (!newList.trim()) return;
@@ -21,8 +20,8 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
     update((prev: Project) => ({ lists: [...prev.lists, { id: tempId, name, todos: [] }] }));
     
     // DB
-    const { data } = await supabase.from('lists').insert({ project_id: project.id, name }).select('id').single();
-    if (data) {
+    const data = await addListAction(project.id, name);
+    if (data && "id" in data) {
       update((prev: Project) => ({ lists: prev.lists.map(l => l.id === tempId ? { ...l, id: data.id } : l) }));
     }
   };
@@ -51,8 +50,8 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
     }));
 
     // DB
-    const { data } = await supabase.from('todos').insert(todoData).select('id').single();
-    if (data) {
+    const data = await addTodoAction(todoData);
+    if (data && "id" in data) {
       update((prev: Project) => ({
         lists: prev.lists.map((l) =>
           l.id === lid ? { ...l, todos: l.todos.map(t => t.id === tempId ? { ...t, id: data.id } : t) } : l
@@ -66,7 +65,7 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
       const newLists = prev.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.map((t) => {
         if (t.id === tid) {
           const newDone = !t.done;
-          supabase.from('todos').update({ done: newDone }).eq('id', tid);
+          updateTodoAction(tid, { done: newDone });
           return { ...t, done: newDone };
         }
         return t;
@@ -79,7 +78,7 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
     update((prev: Project) => {
       const newLists = prev.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.map((t) => {
         if (t.id === tid) {
-          supabase.from('todos').update({ assignee: newAssignee || null }).eq('id', tid);
+          updateTodoAction(tid, { assignee: newAssignee || null });
           return { ...t, assignee: newAssignee };
         }
         return t;
@@ -90,12 +89,12 @@ export function Todos({ project, update, team }: { project: Project, update: (p:
 
   const removeTodo = async (lid: string, tid: string) => {
     update((prev: Project) => ({ lists: prev.lists.map((l) => (l.id === lid ? { ...l, todos: l.todos.filter((t) => t.id !== tid) } : l)) }));
-    await supabase.from('todos').delete().eq('id', tid);
+    await removeTodoAction(tid);
   };
 
   const removeList = async (lid: string) => {
     update((prev: Project) => ({ lists: prev.lists.filter((l) => l.id !== lid) }));
-    await supabase.from('lists').delete().eq('id', lid);
+    await removeListAction(lid);
   };
 
   const prioColors: any = { High: C.bata, Medium: C.kunyit, Low: C.daun };

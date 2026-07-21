@@ -1,50 +1,64 @@
 "use server";
-import { createClient } from "@/utils/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { actionError, assertProjectOwner, getProjectRole, requireUser } from "@/lib/authz";
+import { publishProjectEvent } from "@/lib/project-events";
 
 export async function updateProjectAction(id: string, patch: any) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not logged in" };
+  try {
+    const user = await requireUser();
+    const role = await getProjectRole(user.id, id);
+    const canEditData = role === "owner" || role === "admin" || role === "editor";
+    const isOwner = role === "owner";
 
-  const { data: existingProject } = await supabase.from('projects').select('owner_id, data').eq('id', id).single();
-  if (!existingProject) return { error: "Project not found" };
+    if (!canEditData) return { error: "Unauthorized" };
 
-  const isOwner = existingProject.owner_id === user.id;
-  const { name, client, stripe, createdAt, lists, ...dataPayload } = patch as any;
-  
-  let updatePayload: any = {};
-  
-  // Only owner can update name, client, stripe
-  if (isOwner) {
-    if (name !== undefined) updatePayload.name = name;
-    if (client !== undefined) updatePayload.client = client;
-    if (stripe !== undefined) updatePayload.stripe = stripe;
+    const existingProject = await prisma.project.findUnique({
+      where: { id },
+      select: { data: true }
+    });
+
+    if (!existingProject) return { error: "Project not found" };
+
+    const { name, client, stripe, createdAt, lists, id: _id, slug, ...dataPayload } = patch as any;
+    let updatePayload: any = {};
+
+    if (isOwner) {
+      if (name !== undefined) updatePayload.name = name;
+      if (client !== undefined) updatePayload.client = client;
+      if (stripe !== undefined) updatePayload.stripe = stripe;
+    }
+
+    if (Object.keys(dataPayload).length > 0) {
+      const existingData = typeof existingProject.data === 'string' ? JSON.parse(existingProject.data) : (existingProject.data || {});
+      updatePayload.data = { ...existingData, ...dataPayload };
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      await prisma.project.update({
+        where: { id },
+        data: updatePayload
+      });
+      publishProjectEvent({ type: "project", projectId: id });
+    }
+
+    revalidatePath(`/project/${id}`);
+    revalidatePath('/calendar');
+    return { success: true };
+  } catch (error) {
+    return actionError(error);
   }
-
-  if (Object.keys(dataPayload).length > 0) {
-    const existingData = typeof existingProject.data === 'string' ? JSON.parse(existingProject.data) : (existingProject.data || {});
-    updatePayload.data = { ...existingData, ...dataPayload };
-  }
-  
-  if (Object.keys(updatePayload).length > 0) {
-    await supabase.from('projects').update(updatePayload).eq('id', id);
-  }
-
-  revalidatePath('/calendar');
-  return { success: true };
 }
 
 export async function deleteProjectAction(id: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not logged in" };
-
-  const { data: existingProject } = await supabase.from('projects').select('owner_id').eq('id', id).single();
-  if (!existingProject || existingProject.owner_id !== user.id) {
-    return { error: "Unauthorized" };
+  try {
+    const user = await requireUser();
+    await assertProjectOwner(user.id, id);
+    await prisma.project.delete({ where: { id } });
+    publishProjectEvent({ type: "project", projectId: id });
+  } catch (error: any) {
+    console.error("Error deleting project:", error);
+    return actionError(error);
   }
-
-  await supabase.from('projects').delete().eq('id', id);
   return { success: true };
 }

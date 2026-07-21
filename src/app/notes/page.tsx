@@ -1,34 +1,47 @@
-import { createClient } from '@/utils/supabase/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { NotesClientWrapper } from './NotesClientWrapper'
 
 export default async function NotesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const session = await auth()
+  const user = session?.user
+  if (!user || !user.id) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('name, notes').eq('id', user.id).single()
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { name: true, notes: true }
+  })
   const me = profile?.name || user.email?.split('@')[0] || 'User'
-  const initialNotes = typeof profile?.notes === 'string' ? JSON.parse(profile.notes) : (profile?.notes || [])
+  const initialNotes = typeof profile?.notes === 'string' ? JSON.parse(profile.notes as string) : (profile?.notes || [])
 
-  const { data: pm } = await supabase.from('project_members').select('project_id').eq('user_id', user.id)
-  const memberOf = pm?.map((m) => m.project_id) || []
-  let query = supabase.from('projects').select('id')
-  if (memberOf.length > 0) {
-    query = query.or(`owner_id.eq.${user.id},id.in.(${memberOf.join(',')})`)
-  } else {
-    query = query.eq('owner_id', user.id)
-  }
-  const { data: projects } = await query
+  const userMemberships = await prisma.projectMember.findMany({
+    where: { userId: user.id },
+    select: { projectId: true }
+  })
+  const memberOf = userMemberships.map((m) => m.projectId) || []
   
-  const { data: allMembers } = await supabase.from('project_members')
-    .select('profiles(name)')
-    .in('project_id', (projects || []).map(p => p.id))
+  const projects = await prisma.project.findMany({
+    where: {
+      OR: [
+        { ownerId: user.id },
+        { id: { in: memberOf } }
+      ]
+    },
+    select: { id: true }
+  })
+  
+  const projectIds = projects.map(p => p.id)
+  
+  const allMembers = await prisma.projectMember.findMany({
+    where: { projectId: { in: projectIds } },
+    include: { user: { select: { name: true } } }
+  })
   
   const teamSet = new Set<string>();
   teamSet.add(me);
   allMembers?.forEach((m: any) => {
-    if (m.profiles?.name) teamSet.add(m.profiles.name);
+    if (m.user?.name) teamSet.add(m.user.name);
   });
 
   const data = { notes: initialNotes, team: Array.from(teamSet) as string[], projects: [] };

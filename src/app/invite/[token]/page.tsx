@@ -2,47 +2,30 @@
 
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
 import { btnPrimary } from '@/lib/styles';
+import { acceptInvite } from '../actions';
 
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
-  const supabase = createClient();
   const [status, setStatus] = useState('Memeriksa undangan...');
 
   useEffect(() => {
     (async () => {
-      const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user) {
-        setStatus('Anda harus login terlebih dahulu.');
-        setTimeout(() => router.push('/login'), 2000);
-        return;
-      }
-
-      const { data: invite } = await supabase.from('invitations').select('*').eq('token', token).single();
+      const result = await acceptInvite(token);
       
-      if (!invite) {
-        setStatus('Tautan undangan tidak valid atau sudah kadaluarsa.');
-        return;
-      }
-
-      // Add user to project_members
-      const { error } = await supabase.from('project_members').insert({
-        project_id: invite.project_id,
-        user_id: authData.user.id,
-        role: invite.role
-      });
-
-      if (error && error.code !== '23505') { // Ignore unique violation if already member
-        setStatus('Gagal bergabung ke proyek: ' + error.message);
+      if (result.error) {
+        setStatus(result.error);
+        if (result.redirect) {
+          setTimeout(() => router.push(result.redirect as string), 2000);
+        }
         return;
       }
 
       setStatus('Berhasil bergabung! Mengarahkan ke proyek...');
       setTimeout(() => router.push('/'), 1500);
     })();
-  }, [token]);
+  }, [token, router]);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FB' }}>
